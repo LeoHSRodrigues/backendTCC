@@ -6,7 +6,7 @@ var jwt = require('jsonwebtoken');
 bodyParser = require('body-parser');
 require("dotenv").load();
 var jwt = require('jsonwebtoken');
-
+const expressJwt = require('express-jwt');
 
 // parse application/json
 app.use(bodyParser.json());
@@ -18,6 +18,10 @@ app.use(bodyParser.raw());
 app.use(bodyParser.text());
 app.use(cors());
 const url = 'mongodb://localhost:27017'
+
+const checkIfAuthenticated = expressJwt({
+  secret: process.env.SECRET
+}); 
 
 
 app.post('/api', (req, resultado) => {
@@ -35,9 +39,9 @@ app.post('/api', (req, resultado) => {
       if (err)
          throw err;
          if (res == 1){
-          var query = {"CPF" : req.body.CPF, "Senha": req.body.Senha};
-          collection.find(query).toArray(function(err, result) {
-            if (err) throw err;
+           var query = {"CPF" : req.body.CPF, "Senha": req.body.Senha};
+           collection.find(query).toArray(function(err, result) {
+             if (err) throw err;
             id = result[0]['_id']
             var token = jwt.sign({ id }, process.env.SECRET, {
               expiresIn: 604800
@@ -57,5 +61,5 @@ app.post('/api', (req, resultado) => {
 });
 
 app.listen(8000, () => {
-  console.log('Example app listening on port 8000!')
+  console.log('Rodando na porta 8000!')
 });
