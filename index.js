@@ -32,13 +32,12 @@ app.post('/api', (req, resultado) => {
       return
     }
     
-    // console.log(req.body);
     const db = client.db('sistemaDeVotacao')
     const collection = db.collection('usuarios')
     collection.find({"CPF" : req.body.CPF, "Senha": req.body.Senha}).count(function (err, res) {
       if (err)
-         throw err;
-         if (res == 1){
+      throw err;
+      if (res == 1){
            var query = {"CPF" : req.body.CPF, "Senha": req.body.Senha};
            collection.find(query).toArray(function(err, result) {
              if (err) throw err;
