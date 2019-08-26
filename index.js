@@ -1,64 +1,39 @@
 const express = require('express')
 const app = express();
 const cors = require("cors");
-const mongo = require('mongodb').MongoClient
-var jwt = require('jsonwebtoken');
 bodyParser = require('body-parser');
-require("dotenv").load();
+var mongoose = require('mongoose');
+var passport = require('passport');
 var jwt = require('jsonwebtoken');
-const expressJwt = require('express-jwt');
+require("dotenv").load();
+mongoose.connect(process.env.DATABASE_URL,{dbName: "sistemaDeVotacao", useNewUrlParser: false, useCreateIndex:true});
+// mongoose.set('debug', true);
+require('./models/pessoa');
+var Pessoa = mongoose.model('Pessoa');
+require('./autenticacao');
 
-// parse application/json
 app.use(bodyParser.json());
-// parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: true }));
-// parse the raw data
 app.use(bodyParser.raw());
-// parse text
 app.use(bodyParser.text());
 app.use(cors());
-const url = 'mongodb://localhost:27017'
 
-const checkIfAuthenticated = expressJwt({
-  secret: process.env.SECRET
-}); 
+app.post('/api/login', (req, res,next) => {
 
+  campos = req.body;
+  
+  passport.authenticate('local', {session: false}, function(err, resultado, info){
+    if(err){ return next(err); }
+    resultado.token = resultado.generateJWT();
+    console.log(resultado); 
+    // if(campos){
+    //   return res.json({campos: campos.toAuthJSON()});
+    // } else {
+    //   return res.status(422).json(info);
+    // }
+  })(req, res, next);
 
-app.post('/api', (req, resultado) => {
-
-  mongo.connect(url, { useNewUrlParser: true },(err, client) => {
-    if (err) {
-      console.error(err)
-      return
-    }
-    
-    const db = client.db('sistemaDeVotacao')
-    const collection = db.collection('usuarios')
-    collection.find({"CPF" : req.body.CPF, "Senha": req.body.Senha}).count(function (err, res) {
-      if (err)
-      throw err;
-      if (res == 1){
-           var query = {"CPF" : req.body.CPF, "Senha": req.body.Senha};
-           collection.find(query).toArray(function(err, result) {
-             if (err) throw err;
-            id = result[0]['_id']
-            var token = jwt.sign({ id }, process.env.SECRET, {
-              expiresIn: 604800
-            });
-            campos = {'token': token,'id': result[0]['_id'],'Nome': result[0]['Nome']}
-            client.close();
-            resultado.json(campos);
-          });
-          }
-          else{
-            resultado.json(null);
-
-         }
-      client.close();
-  });
-  })
 });
-
-app.listen(8000, () => {
-  console.log('Rodando na porta 8000!')
-});
+  app.listen(8000, () =>
+    console.log('Rodando na porta 8000!'),
+  );
