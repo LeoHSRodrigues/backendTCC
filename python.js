@@ -1,37 +1,56 @@
 PythonShell = require('python-shell');
 
 const gerarCaracteristicas = function () {
-    let pyshell = new PythonShell('./python_scripts/gerarCaracteristicas.py');
-    
-    pyshell.on('message', function (message) {
-        console.log(message);
-      });
-       
-      // end the input stream and allow the process to exit
-      pyshell.end(function (err,code,signal) {
-        if (err) throw err;
-        console.log('The exit code was: ' + code);
-        console.log('The exit signal was: ' + signal);
-      });
-      return resultado;
+  var uint8arrayToString = function(data){
+    return String.fromCharCode.apply(null, data);
+};
+
+  var spawn = require("child_process").spawn;
+
+  var process = spawn('python',["./python_scripts/gerarCaracteristicas.py"]); 
+  // console.log(process);
+
+  process.stdout.on('data', (data) => {
+    console.log(uint8arrayToString(data));
+ });
+
+ // Handle error output
+ process.stderr.on('data', (data) => {
+  // As said before, convert the Uint8Array to a readable string.
+  console.log(uint8arrayToString(data));
+});
+
+process.on('exit', (code) => {
+  console.log("Process quit with code : " + code);
+});
 };
 
 const validaCaracteristicas = function () {
-    let pyshell = new PythonShell('./python_scripts/comparaCaracteristicas.py');
-    pyshell.on('message', function (message) {
-        console.log(message);
-      });
-       
-      // end the input stream and allow the process to exit
-      pyshell.end(function (err,code,signal) {
-        if (err) throw err;
-        console.log('The exit code was: ' + code);
-        console.log('The exit signal was: ' + signal);
-      });
-      return resultado;
+  var uint8arrayToString = function(data){
+    return String.fromCharCode.apply(null, data);
+};
+
+  var spawn = require("child_process").spawn;
+
+  var process = spawn('python',["./python_scripts/comparaCaracteristicas.py"]); 
+  // console.log(process);
+
+  process.stdout.on('data', (data) => {
+    console.log(uint8arrayToString(data));
+ });
+
+ // Handle error output
+ process.stderr.on('data', (data) => {
+  // As said before, convert the Uint8Array to a readable string.
+  console.log(uint8arrayToString(data));
+});
+
+process.on('exit', (code) => {
+  console.log("Process quit with code : " + code);
+});
 };
 
 module.exports = {
-  gerarCaracteristicas: function() {},
-  validaCaracteristicas: function() {}
+  gerarCaracteristicas: gerarCaracteristicas,
+  validaCaracteristicas:validaCaracteristicas
 }

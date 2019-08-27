@@ -20,7 +20,7 @@ from pyfingerprint import PyFingerprint
 
 try:
 
-    f = PyFingerprint('/dev/ttyS2', 115200, 0xFFFFFFFF, 0x00000000)
+    f = PyFingerprint('/dev/ttyUSB0', 115200, 0xFFFFFFFF, 0x00000000)
 
     if (f.verifyPassword() == False):
 

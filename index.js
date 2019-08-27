@@ -9,6 +9,7 @@ mongoose.connect(process.env.DATABASE_URL,{dbName: "sistemaDeVotacao", useNewUrl
 // mongoose.set('debug', true);
 require('./autenticacao');
 const {PythonShell} = require("python-shell");
+const python = require('./python');
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -33,20 +34,9 @@ app.post('/api/login', (req, res,next) => {
 
 app.post('/api/login/digital', (req, res,next) => {
 
-  let pyshell = new PythonShell('./python_scripts/gerarCaracteristicas.py');
-    
-  pyshell.on('message', function (message) {
-      console.log(message);
-    });
-     
-    // end the input stream and allow the process to exit
-    pyshell.end(function (err,code,signal) {
-      if (err) throw err;
-      console.log('The exit code was: ' + code);
-      console.log('The exit signal was: ' + signal);
-    });
-});
+python.gerarCaracteristicas();
 
+});
 
   app.listen(8000, () =>
     console.log('Rodando na porta 8000!'),
