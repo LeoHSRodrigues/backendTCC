@@ -4,26 +4,29 @@ var passportLocalMongoose = require('passport-local-mongoose');
 var Schema = mongoose.Schema;
 
 var pessoaSchema = new Schema({
-    nome: { type: String, required: true },
+    Nome: { type: String, required: true },
     CPF: { type: String, unique: true, required: true },
     tipoConta: { type: String, required: true },
-    senha: { type: String, required: true }
+    Senha: { type: String, required: true }
 });
 
 pessoaSchema.methods.generateJWT = function() {
+    var today = new Date();
+    var exp = new Date(today);
+    exp.setDate(today.getDate() + 6);
+    
     return jwt.sign({
         id: this._id,
         nome: this.nome,
-        exp: 604800,
+        exp: parseInt(exp.getTime() / 1000),
     }, process.env.SECRET);
 };
 
 pessoaSchema.methods.toAuthJSON = function () {
     return {
-        nome: this.nome,
+        Nome: this.Nome,
         CPF: this.CPF,
         token: this.generateJWT(),
-        tipoConta: this.tipoConta,
     };
 };
 

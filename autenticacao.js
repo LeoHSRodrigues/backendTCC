@@ -10,6 +10,6 @@ passport.use(new LocalStrategy({
         if(!pessoa){
         return done(null, false, {errors: {'email or password': 'is invalid'}});
     }
-    return done(null, Pessoa);
+    return done(null, pessoa);
   }).catch(done);
 }));
