@@ -11,11 +11,23 @@ require('./autenticacao');
 const {PythonShell} = require("python-shell");
 const python = require('./python');
 
+const whitelist = ['http://localhost:4200', 'http://example2.com'];
+const corsOptions = {
+  credentials: true, // This is important.
+  origin: (origin, callback) => {
+    if(whitelist.includes(origin))
+      return callback(null, true)
+
+      callback(new Error('Not allowed by CORS'));
+  }
+}
+
+app.use(cors(corsOptions));
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.raw());
 app.use(bodyParser.text());
-app.use(cors());
 
 app.post('/api/login', (req, res,next) => {
 
@@ -29,15 +41,24 @@ app.post('/api/login', (req, res,next) => {
       return res.status(422).json(info);
     }
   })(req, res, next);
-
 });
+
 
 app.post('/api/login/digital', (req, res,next) => {
-
-python.gerarCaracteristicas();
-
+  
 });
 
-  app.listen(8000, () =>
-    console.log('Rodando na porta 8000!'),
-  );
+
+var server = app.listen(8000, () => 
+console.log('Rodando na porta 8000!'),
+);
+
+var io = require('socket.io').listen(server);
+io.on('connection', function (socket) {
+  // socket.broadcast.emit('user connected');
+  socket.on("message", message => {
+    console.log("Message Received: " + message);
+    io.emit("message", { type: "new-message", text: message });
+  });
+  socket.on('disconnect', function () { console.log("user disconnected") });
+})
