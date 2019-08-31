@@ -7,7 +7,8 @@ var pessoaSchema = new Schema({
     Nome: { type: String, required: true },
     CPF: { type: String, unique: true, required: true },
     tipoConta: { type: String, required: true },
-    Senha: { type: String, required: true }
+    Senha: { type: String, required: true },
+    Digital: { type: String, required: true },
 });
 
 pessoaSchema.methods.generateJWT = function() {

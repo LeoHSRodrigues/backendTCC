@@ -20,7 +20,7 @@ from pyfingerprint import PyFingerprint
 
 try:
 
-    f = PyFingerprint('/dev/ttyUSB0', 115200, 0xFFFFFFFF, 0x00000000)
+    f = PyFingerprint('COM3', 115200, 0xFFFFFFFF, 0x00000000)
 
     if (f.verifyPassword() == False):
 
@@ -58,7 +58,7 @@ try:
 
     time.sleep(2)
 
-    print('Aproxime o dedo novamente...')
+    print('Aproxime o Dedo Novamente...')
 
     # Aguardando reconhecer dedo no leitor
 
@@ -83,8 +83,6 @@ try:
     # Salva as caracteristicas
 
     positionNumber = f.downloadCharacteristics()
-
-    print('Leitura completada com sucesso!')
 
     print(positionNumber)
 

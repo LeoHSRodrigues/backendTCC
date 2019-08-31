@@ -2,9 +2,9 @@ var passport = require('passport');
 var LocalStrategy = require('passport-local').Strategy;
 var Pessoa = require('./models/pessoa');
 
-passport.use(new LocalStrategy({
+passport.use('loginNormal',new LocalStrategy({
   usernameField: 'CPF',
-  passwordField: 'Senha'
+  passwordField: 'Senha',
 }, function(CPF, senha, done) {
     Pessoa.findOne({CPF: CPF, Senha: senha}).then(function(pessoa){
         if(!pessoa){
@@ -13,3 +13,4 @@ passport.use(new LocalStrategy({
     return done(null, pessoa);
   }).catch(done);
 }));
+
