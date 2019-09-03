@@ -5,11 +5,12 @@ bodyParser = require('body-parser');
 var mongoose = require('mongoose');
 var passport = require('passport');
 require("dotenv").load();
-mongoose.connect(process.env.DATABASE_URL, { dbName: "sistemaDeVotacao", useNewUrlParser: false, useCreateIndex: true });
+mongoose.connect(process.env.DATABASE_URL, { dbName: "sistemaDeVotacao", useNewUrlParser: true, useCreateIndex: true });
 // mongoose.set('debug', true);
 require('./autenticacao');
 const { spawn } = require('child_process')
 var Pessoa = require('./models/pessoa');
+var Promise = require("bluebird");
 
 const whitelist = ['http://localhost:4200', 'localhost'];
 const corsOptions = {
@@ -40,6 +41,7 @@ app.post('/api/login', (req, res, next) => {
   passport.authenticate('loginNormal', { session: false }, function (err, resultado, info) {
     if (err) { return next(err); }
     if (resultado) {
+      // console.log(resultado);
       return res.json(resultado.toAuthJSON());
     } else {
       return res.status(422).json(info);
@@ -52,62 +54,74 @@ var io = require('socket.io').listen(server);
 
 
 io.on('connection', function (socket) {
-  // console.log('Conectou');
   socket.on("login", message => {
     if (message.startsWith('mensagem1') && message.length === 20) {
       cpf = message.slice(09);
-      Pessoa.findOne({ CPF: cpf }, 'Digital', function (err, dados) {
+      Pessoa.findOne({ CPF: cpf }, '--Senha', function (err, dados) {
         if (err) return handleError(err);
         var ls = spawn('python', ["-u", "./python_scripts/comparaCaracteristicas.py"], { stdio: 'pipe' });
         ls.stdin.write(dados.Digital);
         ls.stdin.end();
         ls.stdout.on('data', function (data) {
           if (data.toString().startsWith('achou')) {
-            console.log(data.toString().slice(6));
             if (data.toString().slice(6) > 0) {
-              io.emit("login", 'sucesso');
+              io.emit("login", dados.toAuthJSON());
             }
             else {
-              io.emit("login", 'erro');
+              io.emit("login", 'msgDigital não encontrada em nosso sistema');
             }
           }
           else {
-            io.emit("login", data.toString());
+            io.emit("login", 'msg' + data.toString());
           }
         });
         ls.stderr.on('data', function (data) {
           console.log('stderr: ' + data.toString());
         });
         ls.on('exit', function (code) {
-          // console.log('child process exited with code ' + code.toString());
+          console.log('Acabou');
         });
       });
     }
   });
   socket.on("registro", message => {
-    var ls = spawn('python', ["-u", "./python_scripts/comparaCaracteristicas.py"], { stdio: 'pipe' });
-    ls.stdin.write(dados.Digital);
-    ls.stdin.end();
-    ls.stdout.on('data', function (data) {
-      if (data.toString().startsWith('achou')) {
-        console.log(data.toString().slice(6));
-        if (data.toString().slice(6) > 0) {
-          io.emit("registro", 'sucesso');
+    Pessoa.find({ tipoConta: 'Admin' }, '-_id -Senha -CPF -Nome -tipoConta', function (err, docs) {
+      var ls = spawn('python', ["-u", "./python_scripts/criaCaracteristicas.py"]);
+      ls.stdout.on('data', function (data) {
+        if (data.toString().startsWith('[')) {
+          digital = data.toString();
+          resultadoDigital = digital.slice(1, -3).split(',');
+          let resultado = verificaAdmins(resultadoDigital, docs);
+          if(resultado === 'achou'){
+            io.emit("registro",'achou');
+          }
+          else{
+            io.emit("registro",'nachou');
+          }
         }
         else {
-          io.emit("registro", 'erro');
+          io.emit("registro", data.toString());
         }
-      }
-      else {
-        io.emit("registro", data.toString());
-      }
-    });
-    ls.stderr.on('data', function (data) {
-      console.log('stderr: ' + data.toString());
-    });
-    ls.on('exit', function (code) {
-      // console.log('child process exited with code ' + code.toString());
+      });
+      ls.stderr.on('data', function (data) {
+        console.log('stderr: ' + data.toString());
+      });
+      ls.on('exit', function (code) {
+        // console.log('Script Acabou');
+      });
     });
   });
   socket.on('disconnect', function () { console.log("user disconnected") });
 })
+
+function verificaAdmins(resultadoDigital, docs) {
+  for (dados of docs) {
+    let str = resultadoDigital+'lplplp'+dados.Digital;
+    const child_process = require("child_process");
+    const result = child_process.spawnSync("python.exe python_scripts/verificaAdmin.py", { input: str,shell: true});
+    if (result.stdout.toString().trim() > '0'){
+      return 'achou';
+    }
+  };
+    return 'nachou';
+}
