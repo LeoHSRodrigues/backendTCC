@@ -5,7 +5,7 @@ bodyParser = require('body-parser');
 var mongoose = require('mongoose');
 var passport = require('passport');
 require("dotenv").load();
-mongoose.connect(process.env.DATABASE_URL, { dbName: "sistemaDeVotacao", useNewUrlParser: true, useCreateIndex: true });
+mongoose.connect(process.env.DATABASE_URL, { dbName: "sistemaDeVotacao", useNewUrlParser: true, useCreateIndex: false, autoIndex: false });
 // mongoose.set('debug', true);
 require('./autenticacao');
 const { spawn } = require('child_process')
@@ -35,9 +35,7 @@ app.use(bodyParser.raw());
 app.use(bodyParser.text());
 
 app.post('/api/login', (req, res, next) => {
-
   campos = req.body;
-
   passport.authenticate('loginNormal', { session: false }, function (err, resultado, info) {
     if (err) { return next(err); }
     if (resultado) {
@@ -48,6 +46,33 @@ app.post('/api/login', (req, res, next) => {
     }
   })(req, res, next);
 
+});
+
+app.post('/api/cadastro', (req, res, next) => {
+  Pessoa.countDocuments({ CPF: req.body.formulario.CPF }, function (err, dados, info) {
+    if (err) return handleError(err);
+    // console.log(dados);
+    if(dados > 0){
+      return res.status(422).json(info);
+    }
+    else{
+      var pessoa = new Pessoa({ Nome: req.body.formulario.Nome,CPF: req.body.formulario.CPF,tipoConta: req.body.formulario.tipoConta,Senha: req.body.formulario.Senha,Digital: req.body.formulario.Digital });
+ 
+      // save model to database
+      pessoa.save(function (err, pessoa) {
+        if (err) return console.error(err);
+        console.log(" saved to bookstore collection.");
+      });
+    }
+  });
+
+});
+
+app.get('/api/listaPessoas', (req, res, next) => {
+  Pessoa.find({},'Nome CPF tipoConta' ,function(err, pessoas) {
+    console.log(pessoas);
+    return res.send(pessoas);
+ });
 });
 
 var io = require('socket.io').listen(server);
@@ -109,6 +134,25 @@ io.on('connection', function (socket) {
       ls.on('exit', function (code) {
         // console.log('Script Acabou');
       });
+    });
+  });
+  socket.on("cadastro", message => {
+    var ls = spawn('python', ["-u", "./python_scripts/gerarCaracteristicas.py"]);
+    ls.stdout.on('data', function (data) {
+      io.emit('cadastro',data.toString());
+      if (data.toString().startsWith('[')) {
+        digital = data.toString();
+        io.emit("cadastro",digital);
+      }
+      else {
+        io.emit("cadastro", data.toString());
+      }
+    });
+    ls.stderr.on('data', function (data) {
+      console.log('stderr: ' + data.toString());
+    });
+    ls.on('exit', function (code) {
+      // console.log('Script Acabou');
     });
   });
   socket.on('disconnect', function () { console.log("user disconnected") });
