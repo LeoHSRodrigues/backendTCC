@@ -10,7 +10,7 @@ mongoose.connect(process.env.DATABASE_URL, { dbName: "sistemaDeVotacao", useNewU
 require('./autenticacao');
 const { spawn } = require('child_process')
 var Pessoa = require('./models/pessoa');
-var Promise = require("bluebird");
+var Auditoria = require('./models/auditoria');
 
 const whitelist = ['http://localhost:4200', 'localhost'];
 const corsOptions = {
@@ -26,6 +26,8 @@ const corsOptions = {
 var server = app.listen(8000, () =>
   console.log('Rodando na porta 8000!'),
 );
+
+data = new Date();
 
 app.use(cors(corsOptions));
 
@@ -45,7 +47,6 @@ app.post('/api/login', (req, res, next) => {
       return res.status(422).json(info);
     }
   })(req, res, next);
-
 });
 
 app.post('/api/cadastro', (req, res, next) => {
@@ -57,63 +58,134 @@ app.post('/api/cadastro', (req, res, next) => {
     }
     else{
       var pessoa = new Pessoa({ Nome: req.body.formulario.Nome,CPF: req.body.formulario.CPF,tipoConta: req.body.formulario.tipoConta,Senha: req.body.formulario.Senha,Digital: req.body.formulario.Digital });
- 
-      // save model to database
       pessoa.save(function (err, pessoa) {
         if (err) return console.error(err);
-        console.log(" saved to bookstore collection.");
       });
+      Auditoria.create({ CPF: req.body.formulario.CPF,Acao: 'Cadastrou',Data: data}, function (err, small) {
+        if (err) return handleError(err);
+        // saved!
+      });
+      return res.json(pessoa);
     }
   });
 
 });
+app.post('/api/atualizar', (req, res, next) => {
+      Pessoa.updateOne({CPF: req.body.formulario.CPF }, { Nome: req.body.formulario.Nome,CPF: req.body.formulario.CPF,tipoConta: req.body.formulario.tipoConta,Digital: req.body.formulario.Digital }, function(err, teste) {
+        Auditoria.create({ CPF: req.body.formulario.CPF,Acao: 'Atualizou',Data: data}, function (err, small) {
+          if (err) return handleError(err);
+          // saved!
+        });
+        return res.json(teste);
+      });
+});
+app.get('/api/apagarPessoa/:id', (req, res, next) => {
+  console.log(req.params.id);
+      Pessoa.deleteOne({CPF: req.params.id }, function(err, teste) {
+        if (err) return handleError(err);
+        Auditoria.create({ CPF: req.params.id,Acao: 'Apagou',Data: data}, function (err, small) {
+          if (err) return handleError(err);
+          // saved!
+        });
+        return res.json(teste);
+      });
+});
 
 app.get('/api/listaPessoas', (req, res, next) => {
   Pessoa.find({},'Nome CPF tipoConta' ,function(err, pessoas) {
-    console.log(pessoas);
     return res.send(pessoas);
+ });
+});
+app.get('/api/buscarPessoa/:id', (req, res, next) => {
+  Pessoa.findOne({ CPF: req.params.id }, '-Senha -_id -createdAt -updatedAt -__v', function (err, dados) {
+    if (err) return handleError(err);
+    if (dados !== null){
+      return res.send(dados);
+    }
+    else{
+      return res.status(422).json();
+    }
+});
+});
+
+app.get('/api/listaLogs', (req, res, next) => {
+  Auditoria.find({},'CPF Acao Data' ,function(err, auditoria) {
+    return res.send(auditoria);
  });
 });
 
 var io = require('socket.io').listen(server);
 
-
 io.on('connection', function (socket) {
   socket.on("login", message => {
     if (message.startsWith('mensagem1') && message.length === 20) {
       cpf = message.slice(09);
-      Pessoa.findOne({ CPF: cpf }, '--Senha', function (err, dados) {
+      Pessoa.findOne({ CPF: cpf }, '-Senha', function (err, dados) {
         if (err) return handleError(err);
+        if (dados !== null){
         var ls = spawn('python', ["-u", "./python_scripts/comparaCaracteristicas.py"], { stdio: 'pipe' });
         ls.stdin.write(dados.Digital);
         ls.stdin.end();
+
+        global.timer = setTimeout(function(){ 
+          ls.kill();
+          io.emit('login','Tentativa Expirada, tente novamente');
+        }, 7000);
+
         ls.stdout.on('data', function (data) {
+
+          clearTimeout(timer);
+          timer = setTimeout(function(){ 
+            ls.kill();
+            io.emit('login','Tentativa Expirada, tente novamente');
+        }, 7000);
+
           if (data.toString().startsWith('achou')) {
             if (data.toString().slice(6) > 0) {
+              clearTimeout(timer);
               io.emit("login", dados.toAuthJSON());
             }
             else {
-              io.emit("login", 'msgDigital não encontrada em nosso sistema');
+              io.emit("login", 'Digital não encontrada em nosso sistema');
             }
           }
           else {
-            io.emit("login", 'msg' + data.toString());
+            io.emit("login", data.toString());
           }
         });
         ls.stderr.on('data', function (data) {
           console.log('stderr: ' + data.toString());
         });
         ls.on('exit', function (code) {
-          console.log('Acabou');
+          // console.log('Acabou');
         });
+      }
+      else{
+        io.emit("login", 'CPF não cadastrado no sistema');
+      }
       });
     }
   });
   socket.on("registro", message => {
     Pessoa.find({ tipoConta: 'Admin' }, '-_id -Senha -CPF -Nome -tipoConta', function (err, docs) {
       var ls = spawn('python', ["-u", "./python_scripts/criaCaracteristicas.py"]);
+
+      global.tempo = setTimeout(function(){ 
+        ls.kill();
+        io.emit('registro','Tentativa Expirada, tente novamente');
+      }, 5000);
+
       ls.stdout.on('data', function (data) {
+
+        clearTimeout(tempo);
+
+        tempo = setTimeout(function(){ 
+          ls.kill();
+          io.emit('registro','Tentativa Expirada, tente novamente');
+        }, 7000);
+
         if (data.toString().startsWith('[')) {
+          clearTimeout(tempo);
           digital = data.toString();
           resultadoDigital = digital.slice(1, -3).split(',');
           let resultado = verificaAdmins(resultadoDigital, docs);
@@ -138,11 +210,25 @@ io.on('connection', function (socket) {
   });
   socket.on("cadastro", message => {
     var ls = spawn('python', ["-u", "./python_scripts/gerarCaracteristicas.py"]);
+
+    global.tempoCadastro = setTimeout(function(){ 
+      ls.kill();
+      io.emit('cadastro','Tentativa Expirada, tente novamente');
+    }, 7000);
+
     ls.stdout.on('data', function (data) {
+      clearTimeout(tempoCadastro);
+
+      tempoCadastro = setTimeout(function(){ 
+        ls.kill();
+        io.emit('cadastro','Tentativa Expirada, tente novamente');
+      }, 7000);
+
       io.emit('cadastro',data.toString());
       if (data.toString().startsWith('[')) {
         digital = data.toString();
         io.emit("cadastro",digital);
+        clearTimeout(tempoCadastro);
       }
       else {
         io.emit("cadastro", data.toString());

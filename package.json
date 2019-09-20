@@ -9,7 +9,6 @@
   "author": "Leonardo Henrique",
   "license": "ISC",
   "dependencies": {
-    "bluebird": "^3.5.5",
     "body-parser": "^1.19.0",
     "connect-multiparty": "^2.2.0",
     "cors": "^2.8.5",
