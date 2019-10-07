@@ -2,15 +2,17 @@ const express = require('express')
 const app = express();
 const cors = require("cors");
 bodyParser = require('body-parser');
-var mongoose = require('mongoose');
-var passport = require('passport');
+let mongoose = require('mongoose');
+let passport = require('passport');
+const uuidv5 = require('uuid/v5');
 require("dotenv").load();
 mongoose.connect(process.env.DATABASE_URL, { dbName: "sistemaDeVotacao", useNewUrlParser: true, useCreateIndex: false, autoIndex: false });
 // mongoose.set('debug', true);
 require('./autenticacao');
 const { spawn } = require('child_process')
-var Pessoa = require('./models/pessoa');
-var Auditoria = require('./models/auditoria');
+let Pessoa = require('./models/pessoa');
+let Auditoria = require('./models/auditoria');
+let Urna = require('./models/urna');
 
 const whitelist = ['http://localhost:4200', 'localhost'];
 const corsOptions = {
@@ -23,7 +25,7 @@ const corsOptions = {
   }
 }
 
-var server = app.listen(8000, () =>
+let server = app.listen(8000, () =>
   console.log('Rodando na porta 8000!'),
 );
 
@@ -57,7 +59,7 @@ app.post('/api/cadastro', (req, res, next) => {
       return res.status(422).json(info);
     }
     else{
-      var pessoa = new Pessoa({ Nome: req.body.formulario.Nome,CPF: req.body.formulario.CPF,tipoConta: req.body.formulario.tipoConta,Senha: req.body.formulario.Senha,Digital: req.body.formulario.Digital });
+      let pessoa = new Pessoa({ Nome: req.body.formulario.Nome,CPF: req.body.formulario.CPF,tipoConta: req.body.formulario.tipoConta,Senha: req.body.formulario.Senha,Digital: req.body.formulario.Digital });
       pessoa.save(function (err, pessoa) {
         if (err) return console.error(err);
       });
@@ -70,6 +72,33 @@ app.post('/api/cadastro', (req, res, next) => {
   });
 
 });
+app.post('/api/cadastroUrna', (req, res, next) => {
+
+  let Apelido = req.body.formulario.Apelido;
+  let senha = req.body.formulario.Senha;
+  const MY_NAMESPACE = '1db7b033-3d38-4bb9-b9a1-b59a95d04949';
+  let UUID = uuidv5(Apelido, MY_NAMESPACE);
+  Urna.countDocuments({ UUID: UUID }, function (err, dados, info) {
+    if (err) return handleError(err);
+    if(dados > 0){
+      return res.status(422).json(info);
+    }
+    else{
+  let urna = new Urna({ UUID: UUID,Apelido: Apelido,Senha:senha});
+  urna.save(function (err, urna) {
+    if (err) return console.error(err);
+  });
+  Auditoria.create({ CPF: req.body.formulario.Apelido,Acao: 'Cadastrou Urna',Data: data}, function (err, small) {
+    if (err) return handleError(err);
+    // saved!
+  });
+  return res.json(urna);
+
+  }
+  });
+  });
+  
+
 app.post('/api/atualizar', (req, res, next) => {
       Pessoa.updateOne({CPF: req.body.formulario.CPF }, { Nome: req.body.formulario.Nome,CPF: req.body.formulario.CPF,tipoConta: req.body.formulario.tipoConta,Digital: req.body.formulario.Digital }, function(err, teste) {
         Auditoria.create({ CPF: req.body.formulario.CPF,Acao: 'Atualizou',Data: data}, function (err, small) {
@@ -113,8 +142,13 @@ app.get('/api/listaLogs', (req, res, next) => {
     return res.send(auditoria);
  });
 });
+app.get('/api/listaUrnas', (req, res, next) => {
+  Urna.find({},'UUID Apelido' ,function(err, urna) {
+    return res.send(urna);
+ });
+});
 
-var io = require('socket.io').listen(server);
+let io = require('socket.io').listen(server);
 
 io.on('connection', function (socket) {
   socket.on("login", message => {
@@ -123,7 +157,7 @@ io.on('connection', function (socket) {
       Pessoa.findOne({ CPF: cpf }, '-Senha', function (err, dados) {
         if (err) return handleError(err);
         if (dados !== null){
-        var ls = spawn('python', ["-u", "./python_scripts/comparaCaracteristicas.py"], { stdio: 'pipe' });
+        let ls = spawn('python', ["-u", "./python_scripts/comparaCaracteristicas.py"], { stdio: 'pipe' });
         ls.stdin.write(dados.Digital);
         ls.stdin.end();
 
@@ -168,7 +202,7 @@ io.on('connection', function (socket) {
   });
   socket.on("registro", message => {
     Pessoa.find({ tipoConta: 'Admin' }, '-_id -Senha -CPF -Nome -tipoConta', function (err, docs) {
-      var ls = spawn('python', ["-u", "./python_scripts/criaCaracteristicas.py"]);
+      let ls = spawn('python', ["-u", "./python_scripts/criaCaracteristicas.py"]);
 
       global.tempo = setTimeout(function(){ 
         ls.kill();
@@ -209,7 +243,7 @@ io.on('connection', function (socket) {
     });
   });
   socket.on("cadastro", message => {
-    var ls = spawn('python', ["-u", "./python_scripts/gerarCaracteristicas.py"]);
+    let ls = spawn('python', ["-u", "./python_scripts/gerarCaracteristicas.py"]);
 
     global.tempoCadastro = setTimeout(function(){ 
       ls.kill();
