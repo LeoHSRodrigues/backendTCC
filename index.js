@@ -99,8 +99,8 @@ app.post('/api/cadastroUrna', (req, res, next) => {
   });
   
 
-app.post('/api/atualizar', (req, res, next) => {
-      Pessoa.updateOne({CPF: req.body.formulario.CPF }, { Nome: req.body.formulario.Nome,CPF: req.body.formulario.CPF,tipoConta: req.body.formulario.tipoConta,Digital: req.body.formulario.Digital }, function(err, teste) {
+app.post('/api/atualizarPessoa', (req, res, next) => {
+      Pessoa.updateOne({CPF: req.body.formulario.CPF }, { Nome: req.body.formulario.Nome,CPF: req.body.formulario.CPF,tipoConta: req.body.formulario.tipoConta,Digital: req.body.formulario.Digital, Senha: req.body.formulario.Senha }, function(err, teste) {
         Auditoria.create({ CPF: req.body.formulario.CPF,Acao: 'Atualizou',Data: data}, function (err, small) {
           if (err) return handleError(err);
           // saved!
@@ -108,9 +108,48 @@ app.post('/api/atualizar', (req, res, next) => {
         return res.json(teste);
       });
 });
+app.post('/api/atualizarUrna', (req, res, next) => {
+  if (req.body.formulario.MudarSenha === 'Sim'){
+  const MY_NAMESPACE = '1db7b033-3d38-4bb9-b9a1-b59a95d04949';
+  let UUID = uuidv5(req.body.formulario.Apelido, MY_NAMESPACE);
+  Urna.countDocuments({ UUID: UUID }, function (err, dados, info) {
+    if (err) return handleError(err);
+    if(dados > 0){
+      return res.status(422).json(info);
+    }
+    else{
+      Urna.updateOne({UUID: req.body.formulario.UUID }, { Apelido: req.body.formulario.Apelido,Senha: req.body.formulario.Senha}, function(err, teste) {
+        Auditoria.create({ CPF: req.body.formulario.UUID,Acao: 'Atualizou',Data: data}, function (err, small) {
+          if (err) return handleError(err);
+          // saved!
+        });
+        return res.json(teste);
+      });
+}
+});
+}
+else{
+  Urna.updateOne({UUID: req.body.formulario.UUID }, { Apelido: req.body.formulario.Apelido,Senha: req.body.formulario.Senha}, function(err, teste) {
+    Auditoria.create({ CPF: req.body.formulario.UUID,Acao: 'Atualizou',Data: data}, function (err, small) {
+      if (err) return handleError(err);
+      // saved!
+    });
+    return res.json(teste);
+  });
+}
+});
 app.get('/api/apagarPessoa/:id', (req, res, next) => {
-  console.log(req.params.id);
       Pessoa.deleteOne({CPF: req.params.id }, function(err, teste) {
+        if (err) return handleError(err);
+        Auditoria.create({ CPF: req.params.id,Acao: 'Apagou',Data: data}, function (err, small) {
+          if (err) return handleError(err);
+          // saved!
+        });
+        return res.json(teste);
+      });
+});
+app.get('/api/apagarUrna/:id', (req, res, next) => {
+      Urna.deleteOne({UUID: req.params.id }, function(err, teste) {
         if (err) return handleError(err);
         Auditoria.create({ CPF: req.params.id,Acao: 'Apagou',Data: data}, function (err, small) {
           if (err) return handleError(err);
@@ -126,7 +165,18 @@ app.get('/api/listaPessoas', (req, res, next) => {
  });
 });
 app.get('/api/buscarPessoa/:id', (req, res, next) => {
-  Pessoa.findOne({ CPF: req.params.id }, '-Senha -_id -createdAt -updatedAt -__v', function (err, dados) {
+  Pessoa.findOne({ CPF: req.params.id }, '-_id -createdAt -updatedAt -__v', function (err, dados) {
+    if (err) return handleError(err);
+    if (dados !== null){
+      return res.send(dados);
+    }
+    else{
+      return res.status(422).json();
+    }
+});
+});
+app.get('/api/buscarUrna/:id', (req, res, next) => {
+  Urna.findOne({ UUID: req.params.id }, '-_id -UUID -createdAt -updatedAt -__v', function (err, dados) {
     if (err) return handleError(err);
     if (dados !== null){
       return res.send(dados);
