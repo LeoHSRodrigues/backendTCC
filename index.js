@@ -25,21 +25,21 @@ let Pessoa = require("./models/pessoa");
 let Auditoria = require("./models/auditoria");
 let Urna = require("./models/urna");
 
-// const whitelist = ["http://localhost:4200", "localhost:8000"];
-// const corsOptions = {
-//   credentials: true, // This is important.
-//   origin: (origin, callback) => {
-//     if (whitelist.includes(origin)) return callback(null, true);
+const whitelist = ["http://localhost:4200", "localhost:8000"];
+const corsOptions = {
+  credentials: true, // This is important.
+  // origin: (origin, callback) => {
+  //   if (whitelist.includes(origin)) return callback(null, true);
 
-//     callback(new Error("Not allowed by CORS"));
-//   }
-// };
+  //   callback(new Error("Not allowed by CORS"));
+  // }
+};
 
 let server = app.listen(8000, () => console.log("Rodando na porta 8000!"));
 
 data = new Date();
 
-// app.use(cors(corsOptions));
+app.use(cors(corsOptions));
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -49,7 +49,7 @@ app.use(express.static("assets"));
 
 app.post("/api/login", (req, res, next) => {
   campos = req.body;
-  passport.authenticate("loginNormal", { session: false }, function(
+  passport.authenticate("loginNormal", { session: false }, function (
     err,
     resultado,
     info
@@ -67,10 +67,10 @@ app.post("/api/login", (req, res, next) => {
 });
 
 let storage = multer.diskStorage({
-  destination: function(req, file, cb) {
+  destination: function (req, file, cb) {
     cb(null, "./assets");
   },
-  filename: function(req, file, cb) {
+  filename: function (req, file, cb) {
     cb(null, Date.now() + path.extname(file.originalname));
   }
 });
@@ -78,17 +78,19 @@ let storage = multer.diskStorage({
 let upload = multer({ storage: storage });
 
 app.post("/api/cadastroPessoa", (req, res, next) => {
-  Pessoa.countDocuments({ CPF: req.body.CPF }, function(err, dados, info) {
-    if (err) return handleError(err);
-    if (dados > 0) {
-      return res.status(422).json(info);
-    } else {
-      upload.single("Foto")(req, res, function(err) {
-        if (err instanceof multer.MulterError) {
-          return handleError(err);
-        } else if (err) {
-          return handleError(err);
+  upload.single("Foto")(req, res, function (err) {
+    if (err instanceof multer.MulterError) {
+      return handleError(err);
+    } else if (err) {
+      return handleError(err);
+    } Pessoa.countDocuments({ CPF: req.body.CPF }, function (err, dados, info) {
+      if (err) return handleError(err);
+      if (dados > 0) {
+        if (req.file !== undefined && req.file !== null) {
+          fs.unlinkSync('assets/' + req.file.filename);
         }
+        return res.status(422).json(info);
+      } else {
         if (req.file !== undefined && req.file !== null) {
           pessoa = new Pessoa({
             Nome: req.body.Nome,
@@ -108,19 +110,19 @@ app.post("/api/cadastroPessoa", (req, res, next) => {
             Foto: "N/A"
           });
         }
-        pessoa.save(function(err, pessoa) {
+        pessoa.save(function (err, pessoa) {
           if (err) return console.error(err);
         });
         Auditoria.create(
           { CPF: req.body.CPF, Acao: "Cadastrou", Data: data },
-          function(err, small) {
+          function (err, small) {
             if (err) return handleError(err);
             // saved!
           }
         );
         return res.json(pessoa);
-      });
-    }
+      }
+    });
   });
 });
 app.post("/api/cadastroUrna", (req, res, next) => {
@@ -128,13 +130,13 @@ app.post("/api/cadastroUrna", (req, res, next) => {
   let senha = req.body.formulario.Senha;
   const MY_NAMESPACE = "1db7b033-3d38-4bb9-b9a1-b59a95d04949";
   let UUID = uuidv5(Apelido, MY_NAMESPACE);
-  Urna.countDocuments({ UUID: UUID }, function(err, dados, info) {
+  Urna.countDocuments({ UUID: UUID }, function (err, dados, info) {
     if (err) return handleError(err);
     if (dados > 0) {
       return res.status(422).json(info);
     } else {
       let urna = new Urna({ UUID: UUID, Apelido: Apelido, Senha: senha });
-      urna.save(function(err, urna) {
+      urna.save(function (err, urna) {
         if (err) return console.error(err);
       });
       Auditoria.create(
@@ -143,7 +145,7 @@ app.post("/api/cadastroUrna", (req, res, next) => {
           Acao: "Cadastrou Urna",
           Data: data
         },
-        function(err, small) {
+        function (err, small) {
           if (err) return handleError(err);
           // saved!
         }
@@ -154,32 +156,59 @@ app.post("/api/cadastroUrna", (req, res, next) => {
 });
 
 app.post("/api/atualizarPessoa", (req, res, next) => {
-  Pessoa.updateOne(
-    { CPF: req.body.formulario.CPF },
-    {
-      Nome: req.body.formulario.Nome,
-      CPF: req.body.formulario.CPF,
-      tipoConta: req.body.formulario.tipoConta,
-      Digital: req.body.formulario.Digital,
-      Senha: req.body.formulario.Senha
-    },
-    function(err, teste) {
-      Auditoria.create(
-        { CPF: req.body.formulario.CPF, Acao: "Atualizou", Data: data },
-        function(err, small) {
-          if (err) return handleError(err);
-          // saved!
-        }
-      );
-      return res.json(teste);
-    }
-  );
+  upload.single("Foto")(req, res, function (err) {
+    if (err instanceof multer.MulterError) {
+      return handleError(err);
+    } else if (err) {
+      return handleError(err);
+    } 
+    if (req.file !== undefined && req.file !== null) {
+          Pessoa.updateOne({ CPF: req.body.CPF },{
+            Nome: req.body.Nome,
+            CPF: req.body.CPF,
+            tipoConta: req.body.tipoConta,
+            Digital: req.body.Digital,
+            Senha: req.body.Senha,
+            Foto: req.file.filename
+          },
+          function(err, teste) {
+            Auditoria.create(
+              { CPF: req.body.CPF, Acao: "Atualizou", Data: data },
+              function(err, small) {
+                if (err) return handleError(err);
+                // saved!
+              }
+            );
+          }
+        );
+      } else {
+          Pessoa.updateOne({ CPF: req.body.CPF },{
+            Nome: req.body.Nome,
+            CPF: req.body.CPF,
+            tipoConta: req.body.tipoConta,
+            Digital: req.body.Digital,
+            Senha: req.body.Senha,
+          },
+          function(err, teste) {
+            Auditoria.create(
+              { CPF: req.body.CPF, Acao: "Atualizou", Data: data },
+              function(err, small) {
+                if (err) return handleError(err);
+                // saved!
+              }
+            );
+          }
+        );
+      }
+  });
+  return res.status(200).json({status:"ok"})
 });
+
 app.post("/api/atualizarUrna", (req, res, next) => {
   if (req.body.formulario.MudarSenha === "Sim") {
     const MY_NAMESPACE = "1db7b033-3d38-4bb9-b9a1-b59a95d04949";
     let UUID = uuidv5(req.body.formulario.Apelido, MY_NAMESPACE);
-    Urna.countDocuments({ UUID: UUID }, function(err, dados, info) {
+    Urna.countDocuments({ UUID: UUID }, function (err, dados, info) {
       if (err) return handleError(err);
       if (dados > 0) {
         return res.status(422).json(info);
@@ -190,10 +219,10 @@ app.post("/api/atualizarUrna", (req, res, next) => {
             Apelido: req.body.formulario.Apelido,
             Senha: req.body.formulario.Senha
           },
-          function(err, teste) {
+          function (err, teste) {
             Auditoria.create(
               { CPF: req.body.formulario.UUID, Acao: "Atualizou", Data: data },
-              function(err, small) {
+              function (err, small) {
                 if (err) return handleError(err);
                 // saved!
               }
@@ -210,10 +239,10 @@ app.post("/api/atualizarUrna", (req, res, next) => {
         Apelido: req.body.formulario.Apelido,
         Senha: req.body.formulario.Senha
       },
-      function(err, teste) {
+      function (err, teste) {
         Auditoria.create(
           { CPF: req.body.formulario.UUID, Acao: "Atualizou", Data: data },
-          function(err, small) {
+          function (err, small) {
             if (err) return handleError(err);
             // saved!
           }
@@ -224,11 +253,11 @@ app.post("/api/atualizarUrna", (req, res, next) => {
   }
 });
 app.get("/api/apagarPessoa/:id", (req, res, next) => {
-  Pessoa.deleteOne({ CPF: req.params.id }, function(err, teste) {
+  Pessoa.deleteOne({ CPF: req.params.id }, function (err, teste) {
     if (err) return handleError(err);
     Auditoria.create(
       { CPF: req.params.id, Acao: "Apagou", Data: data },
-      function(err, small) {
+      function (err, small) {
         if (err) return handleError(err);
         // saved!
       }
@@ -237,11 +266,11 @@ app.get("/api/apagarPessoa/:id", (req, res, next) => {
   });
 });
 app.get("/api/apagarUrna/:id", (req, res, next) => {
-  Urna.deleteOne({ UUID: req.params.id }, function(err, teste) {
+  Urna.deleteOne({ UUID: req.params.id }, function (err, teste) {
     if (err) return handleError(err);
     Auditoria.create(
       { CPF: req.params.id, Acao: "Apagou", Data: data },
-      function(err, small) {
+      function (err, small) {
         if (err) return handleError(err);
         // saved!
       }
@@ -251,18 +280,36 @@ app.get("/api/apagarUrna/:id", (req, res, next) => {
 });
 
 app.get("/api/listaPessoas", (req, res, next) => {
-  Pessoa.find({}, "Nome CPF tipoConta", function(err, pessoas) {
-    return res.send(pessoas);
+  Pessoa.find({}, "Nome CPF tipoConta Foto", function (err, pessoas) {
+    enderecoBase = buscaEndereco();
+    resultadoFinal = [];
+    pessoas.map((elementoAtual, index) => {
+      if (elementoAtual.Foto === '') {
+        fotoFinal = 'N/A';
+      } else {
+        fotoFinal = 'http://' + enderecoBase + ':8000/' + elementoAtual.Foto;
+      }
+      resultadoFinal.push({ Nome: elementoAtual.Nome, CPF: elementoAtual.CPF, tipoConta: elementoAtual.tipoConta, Foto: fotoFinal });
+    });
+    return res.send(resultadoFinal);
   });
 });
+
 app.get("/api/buscarPessoa/:id", (req, res, next) => {
   Pessoa.findOne(
     { CPF: req.params.id },
     "-_id -createdAt -updatedAt -__v",
-    function(err, dados) {
+    function (err, dados) {
       if (err) return handleError(err);
       if (dados !== null) {
-        return res.send(dados);
+        enderecoBase = buscaEndereco();
+        if (dados.Foto !== undefined && dados.Foto !== null) {
+          imagem = enderecoBase + ':8000/' + dados.Foto;
+        } else {
+          imagem = "N/A";
+        }
+        resultadoFinal = { Nome: dados.Nome, CPF: dados.CPF, tipoConta: dados.tipoConta, Senha: dados.Senha, Digital: dados.Digital, Foto: imagem };
+        return res.send(resultadoFinal);
       } else {
         return res.status(422).json();
       }
@@ -273,7 +320,7 @@ app.get("/api/buscarPessoaNav/:id", (req, res, next) => {
   Pessoa.findOne(
     { CPF: req.params.id },
     "-_id -createdAt -Senha -Digital -tipoConta -CPF -updatedAt -__v",
-    function(err, dados) {
+    function (err, dados) {
       if (err) return handleError(err);
       if (dados !== null) {
         enderecoBase = buscaEndereco();
@@ -294,7 +341,7 @@ app.get("/api/buscarUrna/:id", (req, res, next) => {
   Urna.findOne(
     { UUID: req.params.id },
     "-_id -UUID -createdAt -updatedAt -__v",
-    function(err, dados) {
+    function (err, dados) {
       if (err) return handleError(err);
       if (dados !== null) {
         return res.send(dados);
@@ -306,23 +353,23 @@ app.get("/api/buscarUrna/:id", (req, res, next) => {
 });
 
 app.get("/api/listaLogs", (req, res, next) => {
-  Auditoria.find({}, "CPF Acao Data", function(err, auditoria) {
+  Auditoria.find({}, "CPF Acao Data", function (err, auditoria) {
     return res.send(auditoria);
   });
 });
 app.get("/api/listaUrnas", (req, res, next) => {
-  Urna.find({}, "UUID Apelido", function(err, urna) {
+  Urna.find({}, "UUID Apelido", function (err, urna) {
     return res.send(urna);
   });
 });
 
 let io = require("socket.io").listen(server);
 
-io.on("connection", function(socket) {
+io.on("connection", function (socket) {
   socket.on("login", message => {
     if (message.startsWith("mensagem1") && message.length === 20) {
       cpf = message.slice(09);
-      Pessoa.findOne({ CPF: cpf }, "-Senha", function(err, dados) {
+      Pessoa.findOne({ CPF: cpf }, "-Senha", function (err, dados) {
         if (err) return handleError(err);
         if (dados !== null) {
           let ls = spawn(
@@ -333,14 +380,14 @@ io.on("connection", function(socket) {
           ls.stdin.write(dados.Digital);
           ls.stdin.end();
 
-          global.timer = setTimeout(function() {
+          global.timer = setTimeout(function () {
             ls.kill();
             io.emit("login", "Tentativa Expirada, tente novamente");
           }, 7000);
 
-          ls.stdout.on("data", function(data) {
+          ls.stdout.on("data", function (data) {
             clearTimeout(timer);
-            timer = setTimeout(function() {
+            timer = setTimeout(function () {
               ls.kill();
               io.emit("login", "Tentativa Expirada, tente novamente");
             }, 7000);
@@ -356,10 +403,10 @@ io.on("connection", function(socket) {
               io.emit("login", data.toString());
             }
           });
-          ls.stderr.on("data", function(data) {
+          ls.stderr.on("data", function (data) {
             console.log("stderr: " + data.toString());
           });
-          ls.on("exit", function(code) {
+          ls.on("exit", function (code) {
             // console.log('Acabou');
           });
         } else {
@@ -372,21 +419,21 @@ io.on("connection", function(socket) {
     Pessoa.find(
       { tipoConta: "Admin" },
       "-_id -Senha -CPF -Nome -tipoConta",
-      function(err, docs) {
+      function (err, docs) {
         let ls = spawn("python", [
           "-u",
           "./python_scripts/criaCaracteristicas.py"
         ]);
 
-        global.tempo = setTimeout(function() {
+        global.tempo = setTimeout(function () {
           ls.kill();
           io.emit("registro", "Tentativa Expirada, tente novamente");
         }, 5000);
 
-        ls.stdout.on("data", function(data) {
+        ls.stdout.on("data", function (data) {
           clearTimeout(tempo);
 
-          tempo = setTimeout(function() {
+          tempo = setTimeout(function () {
             ls.kill();
             io.emit("registro", "Tentativa Expirada, tente novamente");
           }, 7000);
@@ -405,10 +452,10 @@ io.on("connection", function(socket) {
             io.emit("registro", data.toString());
           }
         });
-        ls.stderr.on("data", function(data) {
+        ls.stderr.on("data", function (data) {
           console.log("stderr: " + data.toString());
         });
-        ls.on("exit", function(code) {
+        ls.on("exit", function (code) {
           // console.log('Script Acabou');
         });
       }
@@ -420,15 +467,15 @@ io.on("connection", function(socket) {
       "./python_scripts/gerarCaracteristicas.py"
     ]);
 
-    global.tempoCadastro = setTimeout(function() {
+    global.tempoCadastro = setTimeout(function () {
       ls.kill();
       io.emit("cadastro", "Tentativa Expirada, tente novamente");
     }, 7000);
 
-    ls.stdout.on("data", function(data) {
+    ls.stdout.on("data", function (data) {
       clearTimeout(tempoCadastro);
 
-      tempoCadastro = setTimeout(function() {
+      tempoCadastro = setTimeout(function () {
         ls.kill();
         io.emit("cadastro", "Tentativa Expirada, tente novamente");
       }, 7000);
@@ -442,14 +489,14 @@ io.on("connection", function(socket) {
         io.emit("cadastro", data.toString());
       }
     });
-    ls.stderr.on("data", function(data) {
+    ls.stderr.on("data", function (data) {
       console.log("stderr: " + data.toString());
     });
-    ls.on("exit", function(code) {
+    ls.on("exit", function (code) {
       // console.log('Script Acabou');
     });
   });
-  socket.on("disconnect", function() {
+  socket.on("disconnect", function () {
     console.log("user disconnected");
   });
 });
@@ -471,7 +518,7 @@ function verificaAdmins(resultadoDigital, docs) {
 function base64_encode(file) {
   return fs.readFileSync(file, "base64");
 }
-function buscaEndereco(){
+function buscaEndereco() {
   var ifaces = os.networkInterfaces();
   Object.keys(ifaces).forEach(function (ifname) {
     ifaces[ifname].forEach(function (iface) {
@@ -480,7 +527,7 @@ function buscaEndereco(){
         return;
       }
       global.endereco = iface.address;
-        return;
+      return;
     });
   });
   return global.endereco;
