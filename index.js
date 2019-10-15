@@ -24,6 +24,7 @@ const { spawn } = require("child_process");
 let Pessoa = require("./models/pessoa");
 let Auditoria = require("./models/auditoria");
 let Urna = require("./models/urna");
+let Candidato = require("./models/candidatos");
 
 const whitelist = ["http://localhost:4200", "localhost:8000"];
 const corsOptions = {
@@ -290,6 +291,22 @@ app.get("/api/listaPessoas", (req, res, next) => {
         fotoFinal = 'http://' + enderecoBase + ':8000/' + elementoAtual.Foto;
       }
       resultadoFinal.push({ Nome: elementoAtual.Nome, CPF: elementoAtual.CPF, tipoConta: elementoAtual.tipoConta, Foto: fotoFinal });
+    });
+    return res.send(resultadoFinal);
+  });
+});
+
+app.get("/api/listaVotacao", (req, res, next) => {
+  Candidato.find({}, "Nome CPF tipoConta Foto Numero", function (err, pessoas) {
+    enderecoBase = buscaEndereco();
+    resultadoFinal = [];
+    pessoas.map((elementoAtual, index) => {
+      if (elementoAtual.Foto === '') {
+        fotoFinal = 'N/A';
+      } else {
+        fotoFinal = 'http://' + enderecoBase + ':8000/' + elementoAtual.Foto;
+      }
+      resultadoFinal.push({ Nome: elementoAtual.Nome, CPF: elementoAtual.CPF, tipoConta: elementoAtual.tipoConta, Foto: fotoFinal, Numero: elementoAtual.Numero });
     });
     return res.send(resultadoFinal);
   });
