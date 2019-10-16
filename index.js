@@ -101,6 +101,11 @@ app.post("/api/cadastroPessoa", (req, res, next) => {
             Digital: req.body.Digital,
             Foto: req.file.filename
           });
+          candidato = new Candidato({
+            Nome: req.body.Nome,
+            CPF: req.body.CPF,
+            Foto: req.file.filename
+          });
         } else {
           pessoa = new Pessoa({
             Nome: req.body.Nome,
@@ -110,8 +115,16 @@ app.post("/api/cadastroPessoa", (req, res, next) => {
             Digital: req.body.Digital,
             Foto: "N/A"
           });
+          candidato = new Candidato({
+            Nome: req.body.Nome,
+            CPF: req.body.CPF,
+            Foto: "N/A"
+          });
         }
         pessoa.save(function (err, pessoa) {
+          if (err) return console.error(err);
+        });
+        candidato.save(function (err, candidato) {
           if (err) return console.error(err);
         });
         Auditoria.create(
