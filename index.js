@@ -169,6 +169,60 @@ app.post("/api/cadastroUrna", (req, res, next) => {
   });
 });
 
+app.post("/api/cadastroCandidato",upload.none(), (req, res, next) => {
+  Candidato.countDocuments({ Numero: req.body.Numero }, function (err, dados, info) {
+    if (err) return handleError(err);
+    if (dados > 0) {
+      return res.status(422).json(info);
+    } else {
+      Candidato.updateOne(
+        { CPF: req.body.CPF },
+        {
+          Numero: req.body.Numero,
+          tipoConta: 'Candidato'
+        },
+        function (err, teste) {
+          Auditoria.create(
+            { CPF: req.body.CPF, Acao: "Virou candidato", Data: data },
+            function (err, small) {
+              if (err) return handleError(err);
+              // saved!
+            }
+          );
+          return res.json(teste);
+        }
+      );
+    }
+  });
+});
+
+app.post("/api/atualizarCandidato",upload.none(), (req, res, next) => {
+  Candidato.countDocuments({ Numero: req.body.Numero }, function (err, dados, info) {
+    if (err) return handleError(err);
+    if (dados > 0) {
+      return res.status(422).json(info);
+    } else {
+      Candidato.updateOne(
+        { CPF: req.body.CPF },
+        {
+          Numero: req.body.Numero,
+          tipoConta: 'Candidato'
+        },
+        function (err, teste) {
+          Auditoria.create(
+            { CPF: req.body.CPF, Acao: "Atualizou candidatura", Data: data },
+            function (err, small) {
+              if (err) return handleError(err);
+              // saved!
+            }
+          );
+          return res.json(teste);
+        }
+      );
+    }
+  });
+});
+
 app.post("/api/atualizarPessoa", (req, res, next) => {
   upload.single("Foto")(req, res, function (err) {
     if (err instanceof multer.MulterError) {
@@ -279,6 +333,27 @@ app.get("/api/apagarPessoa/:id", (req, res, next) => {
     return res.json(teste);
   });
 });
+
+app.get("/api/removerCandidatura/:id",upload.none(), (req, res, next) => {
+  Candidato.updateOne(
+    { CPF: req.params.id },
+    {
+      Numero: '',
+      tipoConta: 'Eleitor'
+    },
+    function (err, teste) {
+      Auditoria.create(
+        { CPF: req.params.id, Acao: "Revogou candidatura", Data: data },
+        function (err, small) {
+          if (err) return handleError(err);
+          // saved!
+        }
+      );
+      return res.json(teste);
+    }
+  );
+});
+
 app.get("/api/apagarUrna/:id", (req, res, next) => {
   Urna.deleteOne({ UUID: req.params.id }, function (err, teste) {
     if (err) return handleError(err);
