@@ -25,6 +25,7 @@ let Pessoa = require("./models/pessoa");
 let Auditoria = require("./models/auditoria");
 let Urna = require("./models/urna");
 let Candidato = require("./models/candidatos");
+let Votacao = require("./models/votacao");
 
 const whitelist = ["http://localhost:4200", "localhost:8000"];
 const corsOptions = {
@@ -421,6 +422,7 @@ app.get("/api/buscarPessoa/:id", (req, res, next) => {
     }
   );
 });
+
 app.get("/api/buscarPessoaNav/:id", (req, res, next) => {
   Pessoa.findOne(
     { CPF: req.params.id },
@@ -456,6 +458,41 @@ app.get("/api/buscarUrna/:id", (req, res, next) => {
     }
   );
 });
+
+app.get("/api/buscarCandidato/:id", (req, res, next) => {
+  Candidato.findOne(
+    { Numero: req.params.id },
+    "-_id -createdAt -updatedAt -__v -Senha",
+    function (err, dados) {
+      if (err) return handleError(err);
+      if (dados !== null) {
+        enderecoBase = buscaEndereco();
+        if (dados.Foto !== undefined && dados.Foto !== null) {
+          imagem = enderecoBase + ':8000/' + dados.Foto;
+        } else {
+          imagem = "N/A";
+        }
+        resultadoFinal = { Nome: dados.Nome, Foto: imagem };
+        return res.send(resultadoFinal);
+      } else {
+        return res.status(422).json();
+      }
+    }
+  );
+});
+
+app.get("/api/salvarOpcaoVoto/:id", (req, res, next) => {
+  Votacao.create(
+    { Numero: req.params.id },
+    function(err, small) {
+      if (err) return handleError(err);
+      // saved!
+      res.send(small);
+    }
+  );
+});
+
+
 
 app.get("/api/listaLogs", (req, res, next) => {
   Auditoria.find({}, "CPF Acao Data", function (err, auditoria) {
