@@ -334,6 +334,19 @@ app.get("/api/apagarPessoa/:id", (req, res, next) => {
     return res.json(teste);
   });
 });
+app.get("/api/apagarCandidato/:id", (req, res, next) => {
+  Candidato.deleteOne({ CPF: req.params.id }, function (err, teste) {
+    if (err) return handleError(err);
+    Auditoria.create(
+      { CPF: req.params.id, Acao: "Apagou", Data: data },
+      function (err, small) {
+        if (err) return handleError(err);
+        // saved!
+      }
+    );
+    return res.json(teste);
+  });
+});
 
 app.get("/api/removerCandidatura/:id",upload.none(), (req, res, next) => {
   Candidato.updateOne(
@@ -374,7 +387,7 @@ app.get("/api/listaPessoas", (req, res, next) => {
     enderecoBase = buscaEndereco();
     resultadoFinal = [];
     pessoas.map((elementoAtual, index) => {
-      if (elementoAtual.Foto === '') {
+      if (elementoAtual.Foto === '' || elementoAtual.Foto === 'N/A') {
         fotoFinal = 'N/A';
       } else {
         fotoFinal = 'http://' + enderecoBase + ':8000/' + elementoAtual.Foto;
@@ -390,7 +403,7 @@ app.get("/api/listaVotacao", (req, res, next) => {
     enderecoBase = buscaEndereco();
     resultadoFinal = [];
     pessoas.map((elementoAtual, index) => {
-      if (elementoAtual.Foto === '') {
+      if (elementoAtual.Foto === '' || elementoAtual.Foto === 'N/A') {
         fotoFinal = 'N/A';
       } else {
         fotoFinal = 'http://' + enderecoBase + ':8000/' + elementoAtual.Foto;
@@ -409,10 +422,10 @@ app.get("/api/buscarPessoa/:id", (req, res, next) => {
       if (err) return handleError(err);
       if (dados !== null) {
         enderecoBase = buscaEndereco();
-        if (dados.Foto !== undefined && dados.Foto !== null) {
+        if (dados.Foto !== undefined && dados.Foto !== null && dados.Foto !== 'N/A') {
           imagem = enderecoBase + ':8000/' + dados.Foto;
         } else {
-          imagem = "N/A";
+          imagem = undefined;
         }
         resultadoFinal = { Nome: dados.Nome, CPF: dados.CPF, tipoConta: dados.tipoConta, Senha: dados.Senha, Digital: dados.Digital, Foto: imagem };
         return res.send(resultadoFinal);
@@ -431,10 +444,10 @@ app.get("/api/buscarPessoaNav/:id", (req, res, next) => {
       if (err) return handleError(err);
       if (dados !== null) {
         enderecoBase = buscaEndereco();
-        if (dados.Foto !== undefined && dados.Foto !== null) {
+        if (dados.Foto !== undefined && dados.Foto !== null && dados.Foto !== 'N/A') {
           imagem = enderecoBase + ':8000/' + dados.Foto;
         } else {
-          imagem = "N/A";
+          imagem = undefined;
         }
         resultadoFinal = { Foto: imagem, Nome: dados.Nome };
         return res.send(resultadoFinal);

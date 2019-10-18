@@ -30,6 +30,7 @@ pessoaSchema.methods.toAuthJSON = function () {
     return {
         Nome: this.Nome,
         CPF: this.CPF,
+        tipoConta: this.tipoConta,
         token: this.generateJWT(),
     };
 };

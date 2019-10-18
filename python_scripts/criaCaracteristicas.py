@@ -20,7 +20,7 @@ from pyfingerprint import PyFingerprint
 
 try:
 
-    f = PyFingerprint('COM3', 115200, 0xFFFFFFFF, 0x00000000)
+    f = PyFingerprint('COM4', 115200, 0xFFFFFFFF, 0x00000000)
 
     if (f.verifyPassword() == False):
 

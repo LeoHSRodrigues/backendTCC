@@ -19,7 +19,7 @@ digital = list(map(int,chr.split(" ")))
 
 ## Tries to initialize the sensor
 try:
-    f = PyFingerprint('COM3', 115200, 0xFFFFFFFF, 0x00000000)
+    f = PyFingerprint('COM4', 115200, 0xFFFFFFFF, 0x00000000)
 
     if ( f.verifyPassword() == False ):
         raise ValueError('The given fingerprint sensor password is wrong!')
