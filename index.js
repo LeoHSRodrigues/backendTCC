@@ -26,6 +26,7 @@ let Auditoria = require("./models/auditoria");
 let Urna = require("./models/urna");
 let Candidato = require("./models/candidatos");
 let Votacao = require("./models/votacao");
+let opcoesVotacao = require("./models/opcoesVotacao");
 
 const whitelist = ["http://localhost:4200", "localhost:8000"];
 const corsOptions = {
@@ -170,7 +171,7 @@ app.post("/api/cadastroUrna", (req, res, next) => {
   });
 });
 
-app.post("/api/cadastroCandidato",upload.none(), (req, res, next) => {
+app.post("/api/cadastroCandidato", upload.none(), (req, res, next) => {
   Candidato.countDocuments({ Numero: req.body.Numero }, function (err, dados, info) {
     if (err) return handleError(err);
     if (dados > 0) {
@@ -196,8 +197,35 @@ app.post("/api/cadastroCandidato",upload.none(), (req, res, next) => {
     }
   });
 });
+app.post("/api/opcoesVotacao", upload.none(), (req, res, next) => {
 
-app.post("/api/atualizarCandidato",upload.none(), (req, res, next) => {
+  opcoesVotacao.countDocuments({}, function (err, dados, info) {
+    if (err) return handleError(err);
+    if (dados > 0) {
+      return res.status(422).json(info);
+    } else {
+      opcoesVotacao.create({
+        Nome: req.body.NomeEleicao,
+        DataInicio: req.body.DataInicioVotacao,
+        DataTermino: req.body.DataTerminoVotacao,
+        Status: req.body.Status,
+      }, function (err, small) {
+        if (err) return res.json(err);
+        Auditoria.create(
+          { CPF: req.body.CPF, Acao: "Iniciou Votação", Data: data },
+          function (err, small) {
+            if (err) return res.json(err);
+            // saved!
+          }
+        );
+        return res.json(small);
+      }
+    );
+    }
+  });
+});
+
+app.post("/api/atualizarCandidato", upload.none(), (req, res, next) => {
   Candidato.countDocuments({ Numero: req.body.Numero }, function (err, dados, info) {
     if (err) return handleError(err);
     if (dados > 0) {
@@ -230,47 +258,47 @@ app.post("/api/atualizarPessoa", (req, res, next) => {
       return handleError(err);
     } else if (err) {
       return handleError(err);
-    } 
+    }
     if (req.file !== undefined && req.file !== null) {
-          Pessoa.updateOne({ CPF: req.body.CPF },{
-            Nome: req.body.Nome,
-            CPF: req.body.CPF,
-            tipoConta: req.body.tipoConta,
-            Digital: req.body.Digital,
-            Senha: req.body.Senha,
-            Foto: req.file.filename
-          },
-          function(err, teste) {
-            Auditoria.create(
-              { CPF: req.body.CPF, Acao: "Atualizou", Data: data },
-              function(err, small) {
-                if (err) return handleError(err);
-                // saved!
-              }
-            );
-          }
-        );
-      } else {
-          Pessoa.updateOne({ CPF: req.body.CPF },{
-            Nome: req.body.Nome,
-            CPF: req.body.CPF,
-            tipoConta: req.body.tipoConta,
-            Digital: req.body.Digital,
-            Senha: req.body.Senha,
-          },
-          function(err, teste) {
-            Auditoria.create(
-              { CPF: req.body.CPF, Acao: "Atualizou", Data: data },
-              function(err, small) {
-                if (err) return handleError(err);
-                // saved!
-              }
-            );
-          }
-        );
-      }
+      Pessoa.updateOne({ CPF: req.body.CPF }, {
+        Nome: req.body.Nome,
+        CPF: req.body.CPF,
+        tipoConta: req.body.tipoConta,
+        Digital: req.body.Digital,
+        Senha: req.body.Senha,
+        Foto: req.file.filename
+      },
+        function (err, teste) {
+          Auditoria.create(
+            { CPF: req.body.CPF, Acao: "Atualizou", Data: data },
+            function (err, small) {
+              if (err) return handleError(err);
+              // saved!
+            }
+          );
+        }
+      );
+    } else {
+      Pessoa.updateOne({ CPF: req.body.CPF }, {
+        Nome: req.body.Nome,
+        CPF: req.body.CPF,
+        tipoConta: req.body.tipoConta,
+        Digital: req.body.Digital,
+        Senha: req.body.Senha,
+      },
+        function (err, teste) {
+          Auditoria.create(
+            { CPF: req.body.CPF, Acao: "Atualizou", Data: data },
+            function (err, small) {
+              if (err) return handleError(err);
+              // saved!
+            }
+          );
+        }
+      );
+    }
   });
-  return res.status(200).json({status:"ok"})
+  return res.status(200).json({ status: "ok" })
 });
 
 app.post("/api/atualizarUrna", (req, res, next) => {
@@ -348,7 +376,7 @@ app.get("/api/apagarCandidato/:id", (req, res, next) => {
   });
 });
 
-app.get("/api/removerCandidatura/:id",upload.none(), (req, res, next) => {
+app.get("/api/removerCandidatura/:id", upload.none(), (req, res, next) => {
   Candidato.updateOne(
     { CPF: req.params.id },
     {
@@ -381,6 +409,16 @@ app.get("/api/apagarUrna/:id", (req, res, next) => {
     return res.json(teste);
   });
 });
+
+app.get("/api/verificaVotacaoAtivada", (req, res, next) => {
+  opcoesVotacao.findOne({} ,"Status",
+    function (err, dados) {
+      if (err) return handleError(err);
+      return res.json(dados);
+    }
+  );
+});
+
 
 app.get("/api/listaPessoas", (req, res, next) => {
   Pessoa.find({}, "Nome CPF tipoConta Foto", function (err, pessoas) {
@@ -497,7 +535,7 @@ app.get("/api/buscarCandidato/:id", (req, res, next) => {
 app.get("/api/salvarOpcaoVoto/:id", (req, res, next) => {
   Votacao.create(
     { Numero: req.params.id },
-    function(err, small) {
+    function (err, small) {
       if (err) return handleError(err);
       // saved!
       res.send(small);
