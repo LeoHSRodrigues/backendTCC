@@ -10,7 +10,11 @@ passport.use('loginNormal',new LocalStrategy({
         if(!pessoa){
         return done(null, false, {errors: {'email or password': 'is invalid'}});
     }
-    return done(null, pessoa);
+      if(pessoa.tipoConta === 'User') {
+        return done(null, false, {errors: {'permissao': 'is invalid'}});
+      } else {
+        return done(null, pessoa);
+      }
   }).catch(done);
 }));
 

@@ -77,7 +77,12 @@ app.post("/api/login", upload.none(), (req, res, next) => {
       // console.log(resultado);
       return res.json(resultado.toAuthJSON());
     } else {
-      return res.status(422).json(info);
+      if (info.errors.permissao) {
+        return res.status(422).json(info.errors.permissao);
+      }
+      else { 
+        return res.status(400).json(info.errors.permissao);
+      }
     }
   })(req, res, next);
 });
@@ -422,6 +427,31 @@ app.post("/api/atualizarUrna", (req, res, next) => {
     );
   }
 });
+app.get("/api/encerraVotacao/:id", (req, res, next) => {
+  opcoesVotacao.updateOne({},{Status: "Contagem"},
+    function(err, teste) {
+      Auditoria.create(
+        { CPF: req.params.id, Acao: "Encerrou votação e iniciou a contagem", Data: data },
+        function(err, small) {
+          if (err) return handleError(err);
+          // saved!
+        }
+      );
+      return res.json(teste);
+    }
+  );
+  // opcoesVotacao.deleteMany({}, function(err, teste) {
+  //   if (err) return handleError(err);
+  //   Auditoria.create(
+  //     { CPF: req.params.id, Acao: "Encerrou Votação", Data: data },
+  //     function(err, small) {
+  //       if (err) return handleError(err);
+  //       // saved!
+  //     }
+  //   );
+  //   return res.json(teste);
+  // });
+});
 app.get("/api/apagarPessoa/:id", (req, res, next) => {
   Pessoa.deleteOne({ CPF: req.params.id }, function(err, teste) {
     if (err) return handleError(err);
@@ -483,7 +513,39 @@ app.get("/api/apagarUrna/:id", (req, res, next) => {
   });
 });
 
+app.get("/api/contaCandidatos", (req, res, next) => {
+  Candidato.countDocuments({tipoConta: 'Candidato'}, function(err, dados) {
+    if (err) return handleError(err);
+    return res.json(dados);
+  });
+});
+app.get("/api/contaCadastrados", (req, res, next) => {
+  Candidato.countDocuments({}, function(err, dados) {
+    if (err) return handleError(err);
+    return res.json(dados);
+  });
+});
+app.get("/api/contaVotos", (req, res, next) => {
+  Votacao.countDocuments({}, function(err, dados) {
+    if (err) return handleError(err);
+    return res.json(dados);
+  });
+});
+app.get("/api/contaUrnas", (req, res, next) => {
+  Urna.countDocuments({}, function(err, dados) {
+    if (err) return handleError(err);
+    return res.json(dados);
+  });
+});
+
 app.get("/api/verificaVotacaoAtivada", (req, res, next) => {
+  opcoesVotacao.findOne({}, "Status", function(err, dados) {
+    if (err) return handleError(err);
+    return res.json(dados);
+  });
+});
+
+app.get("/api/verificaStatusVotacao", (req, res, next) => {
   opcoesVotacao.findOne({}, "Status", function(err, dados) {
     if (err) return handleError(err);
     return res.json(dados);
