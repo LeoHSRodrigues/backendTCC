@@ -96,8 +96,6 @@ app.post("/api/loginUrna", upload.none(), (req, res, next) => {
   let UUID = uuidv5(Apelido, MY_NAMESPACE);
   Urna.findOne({ UUID: UUID, Senha: senha }, "Status", function(err, dados) {
     if (err) return handleError(err);
-
-
     if (dados.Status === "Em uso") {
       Urna.findOne({ UUID: UUID, Senha: senha, IPuso: ip }, "Status", function(
         err,
@@ -113,7 +111,7 @@ app.post("/api/loginUrna", upload.none(), (req, res, next) => {
               if (err) {
                 console.log("Something wrong when updating data!");
               }
-              const resultado = {UUID: doc.UUID, Hash: doc.Senha};
+              const resultado = {UUID: doc.Apelido, Hash: doc.Senha};
               return res.json(resultado);
             }
           );
