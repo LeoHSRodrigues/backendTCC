@@ -440,18 +440,22 @@ app.get("/api/encerraVotacao/:id", (req, res, next) => {
       return res.json(teste);
     }
   );
-  // opcoesVotacao.deleteMany({}, function(err, teste) {
-  //   if (err) return handleError(err);
-  //   Auditoria.create(
-  //     { CPF: req.params.id, Acao: "Encerrou Votação", Data: data },
-  //     function(err, small) {
-  //       if (err) return handleError(err);
-  //       // saved!
-  //     }
-  //   );
-  //   return res.json(teste);
-  // });
 });
+
+app.get("/api/finalizarVotacao/:id", (req, res, next) => {
+  opcoesVotacao.deleteMany({}, function(err, teste) {
+    if (err) return handleError(err);
+    Auditoria.create(
+      { CPF: req.params.id, Acao: "Encerrou Votação", Data: data },
+      function(err, small) {
+        if (err) return handleError(err);
+        // saved!
+      }
+    );
+    return res.json(teste);
+  });
+  });
+
 app.get("/api/apagarPessoa/:id", (req, res, next) => {
   Pessoa.deleteOne({ CPF: req.params.id }, function(err, teste) {
     if (err) return handleError(err);
@@ -567,6 +571,32 @@ app.get("/api/listaPessoas", (req, res, next) => {
         CPF: elementoAtual.CPF,
         tipoConta: elementoAtual.tipoConta,
         Foto: fotoFinal
+      });
+    });
+    return res.send(resultadoFinal);
+  });
+});
+
+app.get("/api/listaVotos", (req, res, next) => {
+  // Votacao.aggregate([
+  //   { $group: { _id: '$Numero', Contagem: { $sum: 1 }, $sort : { "aa" : -1 }}}]).then(function (resultado) {
+  //   res.send(resultado);
+  // });
+  Votacao.aggregate([
+    { $group: { _id: '$Numero', Contagem: { $sum: 1 }}}]).then(function (resultado) {
+    res.send(resultado);
+  });
+});
+
+app.get("/api/listaCandidatos", (req, res, next) => {
+  Candidato.find({tipoConta: 'Candidato'}, "Nome CPF Numero", function(err, pessoas) {
+    enderecoBase = buscaEndereco();
+    resultadoFinal = [];
+    pessoas.map((elementoAtual, index) => {
+      resultadoFinal.push({
+        Nome: elementoAtual.Nome,
+        CPF: elementoAtual.CPF,
+        Numero: elementoAtual.Numero,
       });
     });
     return res.send(resultadoFinal);
