@@ -79,8 +79,7 @@ app.post("/api/login", upload.none(), (req, res, next) => {
     } else {
       if (info.errors.permissao) {
         return res.status(422).json(info.errors.permissao);
-      }
-      else { 
+      } else {
         return res.status(400).json(info.errors.permissao);
       }
     }
@@ -116,12 +115,12 @@ app.post("/api/loginUrna", upload.none(), (req, res, next) => {
               if (err) {
                 console.log("Something wrong when updating data!");
               }
-              const resultado = {UUID: doc.Apelido, Hash: doc.Senha};
+              const resultado = { UUID: doc.Apelido, Hash: doc.Senha };
               return res.json(resultado);
             }
           );
         } else {
-          return res.status(422).json('error');
+          return res.status(422).json("error");
         }
       });
     } else {
@@ -133,7 +132,7 @@ app.post("/api/loginUrna", upload.none(), (req, res, next) => {
           if (err) {
             console.log("Something wrong when updating data!");
           }
-          const resultado = {UUID: doc.UUID, Hash: doc.Senha};
+          const resultado = { UUID: doc.UUID, Hash: doc.Senha };
           return res.json(resultado);
         }
       );
@@ -276,7 +275,7 @@ app.post("/api/opcoesVotacao", upload.none(), (req, res, next) => {
           Nome: req.body.NomeEleicao,
           DataInicio: req.body.DataInicioVotacao,
           DataTermino: req.body.DataTerminoVotacao,
-          Status: req.body.Status
+          Status: "Iniciada"
         },
         function(err, small) {
           if (err) return res.json(err);
@@ -287,6 +286,10 @@ app.post("/api/opcoesVotacao", upload.none(), (req, res, next) => {
               // saved!
             }
           );
+          Votacao.deleteMany({}, function(err, teste) {
+            if (err) return handleError(err);
+            // return res.json(teste);
+          });
           return res.json(small);
         }
       );
@@ -428,25 +431,13 @@ app.post("/api/atualizarUrna", (req, res, next) => {
   }
 });
 app.get("/api/encerraVotacao/:id", (req, res, next) => {
-  opcoesVotacao.updateOne({},{Status: "Contagem"},
-    function(err, teste) {
-      Auditoria.create(
-        { CPF: req.params.id, Acao: "Encerrou votação e iniciou a contagem", Data: data },
-        function(err, small) {
-          if (err) return handleError(err);
-          // saved!
-        }
-      );
-      return res.json(teste);
-    }
-  );
-});
-
-app.get("/api/finalizarVotacao/:id", (req, res, next) => {
-  opcoesVotacao.deleteMany({}, function(err, teste) {
-    if (err) return handleError(err);
+  opcoesVotacao.updateOne({}, { Status: "Contagem" }, function(err, teste) {
     Auditoria.create(
-      { CPF: req.params.id, Acao: "Encerrou Votação", Data: data },
+      {
+        CPF: req.params.id,
+        Acao: "Encerrou votação e iniciou a contagem",
+        Data: data
+      },
       function(err, small) {
         if (err) return handleError(err);
         // saved!
@@ -454,7 +445,21 @@ app.get("/api/finalizarVotacao/:id", (req, res, next) => {
     );
     return res.json(teste);
   });
+});
+
+app.get("/api/finalizarVotacao/:id", (req, res, next) => {
+  opcoesVotacao.deleteMany({}, function(err, teste) {
+    if (err) return handleError(err);
+    Auditoria.create(
+      { CPF: req.params.id, Acao: "Finalizou Votação", Data: data },
+      function(err, small) {
+        if (err) return handleError(err);
+        // saved!
+      }
+    );
+    return res.json(teste);
   });
+});
 
 app.get("/api/apagarPessoa/:id", (req, res, next) => {
   Pessoa.deleteOne({ CPF: req.params.id }, function(err, teste) {
@@ -518,7 +523,7 @@ app.get("/api/apagarUrna/:id", (req, res, next) => {
 });
 
 app.get("/api/contaCandidatos", (req, res, next) => {
-  Candidato.countDocuments({tipoConta: 'Candidato'}, function(err, dados) {
+  Candidato.countDocuments({ tipoConta: "Candidato" }, function(err, dados) {
     if (err) return handleError(err);
     return res.json(dados);
   });
@@ -531,6 +536,12 @@ app.get("/api/contaCadastrados", (req, res, next) => {
 });
 app.get("/api/contaVotos", (req, res, next) => {
   Votacao.countDocuments({}, function(err, dados) {
+    if (err) return handleError(err);
+    return res.json(dados);
+  });
+});
+app.get("/api/datasVotacao", (req, res, next) => {
+  opcoesVotacao.findOne({}, "DataInicio DataTermino -_id" ,function(err, dados) {
     if (err) return handleError(err);
     return res.json(dados);
   });
@@ -578,25 +589,31 @@ app.get("/api/listaPessoas", (req, res, next) => {
 });
 
 app.get("/api/listaVotos", (req, res, next) => {
-  // Votacao.aggregate([
-  //   { $group: { _id: '$Numero', Contagem: { $sum: 1 }, $sort : { "aa" : -1 }}}]).then(function (resultado) {
-  //   res.send(resultado);
-  // });
   Votacao.aggregate([
-    { $group: { _id: '$Numero', Contagem: { $sum: 1 }}}]).then(function (resultado) {
-    res.send(resultado);
+    {
+      $group: {
+        _id: "$Numero",
+        Contagem: { $sum: 1 }
+      }
+    },
+    { $sort: { Contagem: -1 } }
+  ]).exec(function(e, d) {
+    res.send(d);
   });
 });
 
 app.get("/api/listaCandidatos", (req, res, next) => {
-  Candidato.find({tipoConta: 'Candidato'}, "Nome CPF Numero", function(err, pessoas) {
+  Candidato.find({ tipoConta: "Candidato" }, "Nome CPF Numero", function(
+    err,
+    pessoas
+  ) {
     enderecoBase = buscaEndereco();
     resultadoFinal = [];
     pessoas.map((elementoAtual, index) => {
       resultadoFinal.push({
         Nome: elementoAtual.Nome,
         CPF: elementoAtual.CPF,
-        Numero: elementoAtual.Numero,
+        Numero: elementoAtual.Numero
       });
     });
     return res.send(resultadoFinal);
