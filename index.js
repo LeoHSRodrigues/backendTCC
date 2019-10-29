@@ -9,6 +9,7 @@ let multer = require("multer");
 let path = require("path");
 let fs = require("fs");
 let os = require("os");
+let moment = require("moment");
 require("dotenv").load();
 mongoose.connect(process.env.DATABASE_URL, {
   dbName: "sistemaDeVotacao",
@@ -62,6 +63,75 @@ let storage = multer.diskStorage({
 });
 
 let upload = multer({ storage: storage });
+
+function verificaVotacao(req, res, next) {
+  if ( req.path != '/api/statusAgendamentoVotacao' && req.path != '/api/contaVotos') {
+    return next();
+  }
+  opcoesVotacao.countDocuments({}, function(err, dados, info) {
+    if (err) return handleError(err);
+    if (dados > 0) {
+      opcoesVotacao.findOne({}, "Status DataInicio DataTermino", function(
+        err,
+        resultados
+      ) {
+        if (err) return handleError(err);
+        const termino = moment(resultados.DataTermino);
+        const inicioVotacao = moment(resultados.DataInicio);
+        const agora = moment(new Date());
+        const antesDeFinalizar = moment(agora).isBefore(termino);
+        const depoisDoInicio = moment(agora).isAfter(inicioVotacao);
+        if (resultados.Status === "Aguardando") {
+          if (antesDeFinalizar === true && depoisDoInicio === true) {
+            opcoesVotacao.updateOne({}, { Status: "Iniciada" }, function(
+              err,
+              teste
+            ) {
+              Auditoria.create(
+                {
+                  CPF: "N/A",
+                  Acao: "Iniciado pelo tempo",
+                  Data: data
+                },
+                function(err, small) {
+                  if (err) return handleError(err);
+                  // saved!
+                }
+              );
+            });
+          } else {
+          }
+          } else {
+            if (resultados.Status === "Iniciada") {
+              if (antesDeFinalizar === false && depoisDoInicio === true) {
+                opcoesVotacao.updateOne({}, { Status: "Contagem" }, function(
+                  err,
+                  teste
+                ) {
+                  Auditoria.create(
+                    {
+                      CPF: "N/A",
+                      Acao: "Entrou em status de contagem pelo tempo expirado",
+                      Data: data
+                    },
+                    function(err, small) {
+                      if (err) return handleError(err);
+                      // saved!
+                    }
+                  );
+                });
+              } else {
+              }
+            }
+          }
+      });
+    } else {
+    }
+  });
+  next();
+}
+
+app.all('*', verificaVotacao);
 
 app.post("/api/login", upload.none(), (req, res, next) => {
   campos = req.body;
@@ -275,12 +345,12 @@ app.post("/api/opcoesVotacao", upload.none(), (req, res, next) => {
           Nome: req.body.NomeEleicao,
           DataInicio: req.body.DataInicioVotacao,
           DataTermino: req.body.DataTerminoVotacao,
-          Status: "Iniciada"
+          Status: "Aguardando"
         },
         function(err, small) {
           if (err) return res.json(err);
           Auditoria.create(
-            { CPF: req.body.CPF, Acao: "Iniciou Votação", Data: data },
+            { CPF: req.body.CPF, Acao: "Aguardando Votação", Data: data },
             function(err, small) {
               if (err) return res.json(err);
               // saved!
@@ -446,6 +516,9 @@ app.get("/api/encerraVotacao/:id", (req, res, next) => {
     return res.json(teste);
   });
 });
+app.get("/api/statusAgendamentoVotacao", (req, res, next) => {
+  res.send();
+});
 
 app.get("/api/finalizarVotacao/:id", (req, res, next) => {
   opcoesVotacao.deleteMany({}, function(err, teste) {
@@ -541,7 +614,10 @@ app.get("/api/contaVotos", (req, res, next) => {
   });
 });
 app.get("/api/datasVotacao", (req, res, next) => {
-  opcoesVotacao.findOne({}, "DataInicio DataTermino -_id" ,function(err, dados) {
+  opcoesVotacao.findOne({}, "DataInicio DataTermino -_id", function(
+    err,
+    dados
+  ) {
     if (err) return handleError(err);
     return res.json(dados);
   });
