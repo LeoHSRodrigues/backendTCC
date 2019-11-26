@@ -9,7 +9,8 @@ let multer = require("multer");
 let path = require("path");
 let fs = require("fs");
 let os = require("os");
-let moment = require("moment");
+let moment = require('moment-timezone');
+moment.tz.setDefault("America/Belem");
 require("dotenv").load();
 mongoose.connect(process.env.DATABASE_URL, {
   dbName: "sistemaDeVotacao",
@@ -170,6 +171,7 @@ app.post("/api/loginUrna", upload.none(), (req, res, next) => {
   let UUID = uuidv5(Apelido, MY_NAMESPACE);
   Urna.findOne({ UUID: UUID, Senha: senha }, "Status", function(err, dados) {
     if (err) return handleError(err);
+    if (!dados) return res.status(422).json('Erro');
     if (dados.Status === "Em uso") {
       Urna.findOne({ UUID: UUID, Senha: senha, IPuso: ip }, "Status", function(
         err,
@@ -619,7 +621,8 @@ app.get("/api/datasVotacao", (req, res, next) => {
     dados
   ) {
     if (err) return handleError(err);
-    return res.json(dados);
+    if (dados) return res.json(dados);
+    return res.json('Vazio');
   });
 });
 app.get("/api/contaUrnas", (req, res, next) => {
@@ -672,7 +675,7 @@ app.get("/api/listaVotos", (req, res, next) => {
         Contagem: { $sum: 1 }
       }
     },
-    { $sort: { Contagem: -1 } }
+    { $sort: { Contagem: -1 } },
   ]).exec(function(e, d) {
     res.send(d);
   });
