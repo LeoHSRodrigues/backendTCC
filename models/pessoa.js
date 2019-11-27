@@ -9,7 +9,10 @@ var pessoaSchema = new Schema({
     tipoConta: { type: String, required: true },
     Senha: { type: String, required: true },
     Digital: { type: String, required: true },
-});
+    Foto: { type: String, required: true },
+},{ collection: 'Pessoa' });
+
+pessoaSchema.set('timestamps', true);
 
 pessoaSchema.methods.generateJWT = function() {
     var today = new Date();
@@ -27,6 +30,7 @@ pessoaSchema.methods.toAuthJSON = function () {
     return {
         Nome: this.Nome,
         CPF: this.CPF,
+        tipoConta: this.tipoConta,
         token: this.generateJWT(),
     };
 };
