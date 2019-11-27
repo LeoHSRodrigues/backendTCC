@@ -3,6 +3,7 @@ const Schema = mongoose.Schema;
 
 const Votacaochema = new Schema({
     Numero: { type: String, required: true },
+    Nome: { type: String, required: true },
 },{ collection: 'Votacao' });
 
 

@@ -275,9 +275,9 @@ app.post("/api/cadastroPessoa", (req, res, next) => {
     });
   });
 });
-app.post("/api/cadastroUrna", (req, res, next) => {
-  let Apelido = req.body.formulario.Apelido;
-  let senha = req.body.formulario.Senha;
+app.post("/api/cadastroUrna", upload.none(), (req, res, next) => {
+  let Apelido = req.body.Apelido;
+  let senha = req.body.Senha;
   // mudar pra env variable
   const MY_NAMESPACE = "1db7b033-3d38-4bb9-b9a1-b59a95d04949";
   let UUID = uuidv5(Apelido, MY_NAMESPACE);
@@ -286,13 +286,13 @@ app.post("/api/cadastroUrna", (req, res, next) => {
     if (dados > 0) {
       return res.status(422).json(info);
     } else {
-      let urna = new Urna({ UUID: UUID, Apelido: Apelido, Senha: senha });
-      urna.save(function(err, urna) {
+      let urna = new Urna({ UUID: UUID, Apelido: Apelido, Senha: senha, Status: 'Livre' });
+      urna.save(function(err, urnas) {
         if (err) return console.error(err);
       });
       Auditoria.create(
         {
-          CPF: req.body.formulario.Apelido,
+          CPF: req.body.Apelido,
           Acao: "Cadastrou Urna",
           Data: data
         },
@@ -453,25 +453,26 @@ app.post("/api/atualizarPessoa", (req, res, next) => {
   return res.status(200).json({ status: "ok" });
 });
 
-app.post("/api/atualizarUrna", (req, res, next) => {
-  if (req.body.formulario.MudarSenha === "Sim") {
-    //mudar pra env variable
-    const MY_NAMESPACE = "1db7b033-3d38-4bb9-b9a1-b59a95d04949";
-    let UUID = uuidv5(req.body.formulario.Apelido, MY_NAMESPACE);
+app.post("/api/atualizarUrna", upload.none(), (req, res, next) => {
+  //mudar pra env variable
+  const MY_NAMESPACE = "1db7b033-3d38-4bb9-b9a1-b59a95d04949";
+  let UUID = uuidv5(req.body.Apelido, MY_NAMESPACE);
+  if (req.body.MudarSenha === "Sim") {
     Urna.countDocuments({ UUID: UUID }, function(err, dados, info) {
       if (err) return handleError(err);
       if (dados > 0) {
         return res.status(422).json(info);
       } else {
         Urna.updateOne(
-          { UUID: req.body.formulario.UUID },
+          { UUID: req.body.UUID },
           {
-            Apelido: req.body.formulario.Apelido,
-            Senha: req.body.formulario.Senha
+            Apelido: req.body.Apelido,
+            Senha: req.body.Senha,
+            UUID: UUID
           },
           function(err, teste) {
             Auditoria.create(
-              { CPF: req.body.formulario.UUID, Acao: "Atualizou", Data: data },
+              { CPF: req.body.UUID, Acao: "Atualizou", Data: data },
               function(err, small) {
                 if (err) return handleError(err);
                 // saved!
@@ -484,14 +485,15 @@ app.post("/api/atualizarUrna", (req, res, next) => {
     });
   } else {
     Urna.updateOne(
-      { UUID: req.body.formulario.UUID },
+      { UUID: req.body.UUID },
       {
-        Apelido: req.body.formulario.Apelido,
-        Senha: req.body.formulario.Senha
+        Apelido: req.body.Apelido,
+        Senha: req.body.Senha,
+        UUID: UUID
       },
       function(err, teste) {
         Auditoria.create(
-          { CPF: req.body.formulario.UUID, Acao: "Atualizou", Data: data },
+          { CPF: req.body.UUID, Acao: "Atualizou", Data: data },
           function(err, small) {
             if (err) return handleError(err);
             // saved!
@@ -525,6 +527,8 @@ app.get("/api/statusAgendamentoVotacao", (req, res, next) => {
 app.get("/api/finalizarVotacao/:id", (req, res, next) => {
   opcoesVotacao.deleteMany({}, function(err, teste) {
     if (err) return handleError(err);
+    Urna.updateMany({IPuso: '', Status: ''}, function(err, teste) {
+      if (err) return handleError(err);
     Auditoria.create(
       { CPF: req.params.id, Acao: "Finalizou Votação", Data: data },
       function(err, small) {
@@ -532,7 +536,8 @@ app.get("/api/finalizarVotacao/:id", (req, res, next) => {
         // saved!
       }
     );
-    return res.json(teste);
+  });
+  return res.json(teste);
   });
 });
 
@@ -671,7 +676,7 @@ app.get("/api/listaVotos", (req, res, next) => {
   Votacao.aggregate([
     {
       $group: {
-        _id: "$Numero",
+        _id: {Numero: "$Numero", Nome: "$Nome"},
         Contagem: { $sum: 1 }
       }
     },
@@ -816,8 +821,8 @@ app.get("/api/buscarCandidato/:id", (req, res, next) => {
   );
 });
 
-app.get("/api/salvarOpcaoVoto/:id", (req, res, next) => {
-  Votacao.create({ Numero: req.params.id }, function(err, small) {
+app.post("/api/salvarOpcaoVoto/",  upload.none(),(req, res, next) => {
+  Votacao.create({ Numero: req.body.Numero, Nome: req.body.Nome }, function(err, small) {
     if (err) return handleError(err);
     // saved!
     res.send(small);
