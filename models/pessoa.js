@@ -10,6 +10,7 @@ var pessoaSchema = new Schema({
     Senha: { type: String, required: true },
     Digital: { type: String, required: true },
     Foto: { type: String, required: true },
+    Voto: { type: String, required: true },
 },{ collection: 'Pessoa' });
 
 pessoaSchema.set('timestamps', true);

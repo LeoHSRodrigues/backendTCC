@@ -235,7 +235,8 @@ app.post("/api/cadastroPessoa", (req, res, next) => {
             tipoConta: req.body.tipoConta,
             Senha: req.body.Senha,
             Digital: req.body.Digital,
-            Foto: req.file.filename
+            Foto: req.file.filename,
+            Voto: 'NAO'
           });
           candidato = new Candidato({
             Nome: req.body.Nome,
@@ -249,7 +250,8 @@ app.post("/api/cadastroPessoa", (req, res, next) => {
             tipoConta: req.body.tipoConta,
             Senha: req.body.Senha,
             Digital: req.body.Digital,
-            Foto: "N/A"
+            Foto: "N/A",
+            Voto:'Nao'
           });
           candidato = new Candidato({
             Nome: req.body.Nome,
@@ -504,6 +506,7 @@ app.post("/api/atualizarUrna", upload.none(), (req, res, next) => {
     );
   }
 });
+
 app.get("/api/encerraVotacao/:id", (req, res, next) => {
   opcoesVotacao.updateOne({}, { Status: "Contagem" }, function(err, teste) {
     Auditoria.create(
@@ -602,12 +605,47 @@ app.get("/api/apagarUrna/:id", (req, res, next) => {
   });
 });
 
+app.get("/api/votacaoPessoa", (req, res, next) => {
+  Pessoa.countDocuments({ Voto: "NAO" }, function(err, dados) {
+    if (err) return handleError(err);
+    if (dados < 0) {
+      return res.status(422).json(info);
+    } else {
+      return res.json('Sucesso');
+    }
+  });
+});
+
+app.post("/api/validaVotoPessoa", upload.none(), (req, res, next) => {
+  Pessoa.countDocuments({ Voto: "SIM",CPF: req.body.CPF }, function(err, dados) {
+    if (err) return handleError(err);
+    if (dados > 0) {
+      return res.status(422).json(info);
+    } else {
+      return res.json('Sucesso');
+    }
+  });
+});
+
+app.post("/api/atualizarVotoPessoa", upload.none(), (req, res, next) => {
+  Pessoa.updateOne(
+    { CPF: req.body.CPF },
+    {
+      Voto: 'SIM',
+    },function(err, teste) {
+      return res.json(teste);
+    }
+  );
+});
+
+
 app.get("/api/contaCandidatos", (req, res, next) => {
   Candidato.countDocuments({ tipoConta: "Candidato" }, function(err, dados) {
     if (err) return handleError(err);
     return res.json(dados);
   });
 });
+
 app.get("/api/contaCadastrados", (req, res, next) => {
   Candidato.countDocuments({}, function(err, dados) {
     if (err) return handleError(err);
