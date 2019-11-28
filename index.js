@@ -66,7 +66,7 @@ let storage = multer.diskStorage({
 let upload = multer({ storage: storage });
 
 function verificaVotacao(req, res, next) {
-  if ( req.path != '/api/statusAgendamentoVotacao' && req.path != '/api/contaVotos') {
+  if ( req.path != '/api/statusAgendamentoVotacao' && req.path != '/api/contaVotos' && req.path != '/api/verificaStatusVotacao') {
     return next();
   }
   opcoesVotacao.countDocuments({}, function(err, dados, info) {
@@ -169,6 +169,7 @@ app.post("/api/loginUrna", upload.none(), (req, res, next) => {
   //mudar pra env variable
   const MY_NAMESPACE = "1db7b033-3d38-4bb9-b9a1-b59a95d04949";
   let UUID = uuidv5(Apelido, MY_NAMESPACE);
+  console.log(UUID);
   Urna.findOne({ UUID: UUID, Senha: senha }, "Status", function(err, dados) {
     if (err) return handleError(err);
     if (!dados) return res.status(422).json('Erro');
@@ -608,10 +609,10 @@ app.get("/api/apagarUrna/:id", (req, res, next) => {
 app.get("/api/votacaoPessoa", (req, res, next) => {
   Pessoa.countDocuments({ Voto: "NAO" }, function(err, dados) {
     if (err) return handleError(err);
-    if (dados < 0) {
-      return res.status(422).json(info);
+    if (dados === 0) {
+      return res.status(422).json('erro');
     } else {
-      return res.json('Sucesso');
+      return res.json(dados);
     }
   });
 });
@@ -619,10 +620,10 @@ app.get("/api/votacaoPessoa", (req, res, next) => {
 app.post("/api/validaVotoPessoa", upload.none(), (req, res, next) => {
   Pessoa.countDocuments({ Voto: "SIM",CPF: req.body.CPF }, function(err, dados) {
     if (err) return handleError(err);
-    if (dados > 0) {
-      return res.status(422).json(info);
-    } else {
+    if (dados === 0) {
       return res.json('Sucesso');
+    } else {
+      return res.status(422).json();
     }
   });
 });
@@ -633,6 +634,12 @@ app.post("/api/atualizarVotoPessoa", upload.none(), (req, res, next) => {
     {
       Voto: 'SIM',
     },function(err, teste) {
+      return res.json(teste);
+    }
+  );
+});
+app.get("/api/atualizarVotacaoPessoas", upload.none(), (req, res, next) => {
+  Pessoa.updateMany({Voto: 'NAO'}, function(err, teste) {
       return res.json(teste);
     }
   );
